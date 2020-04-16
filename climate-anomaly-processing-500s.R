@@ -1,6 +1,7 @@
 
 library(ncdf4)
 library(raster)
+library(rgdal)
 library(tidyverse)
 library(lubridate)
 
@@ -34,11 +35,29 @@ Dat_prAnom <- Dat_prAnom %>%
 glimpse(Dat_tasAnom)
 glimpse(Dat_prAnom)
 
-# filter down to Scottish only
-Dat_tasAnom <- Dat_tasAnom %>% filter(region_chr == "Scotland")
-Dat_prAnom <- Dat_prAnom %>% filter(region_chr == "Scotland")
+#####################################################
+# process environmental spatial data
+#####################################################
 
-# read in historical climate data
+# uk shapefile w/ DAs
+Shp_UK <- shapefile(find_onedrive(dir = data_repo, path = "DA shapefile/GBR_adm_shp/GBR_adm1.shp"))
+
+# sand % raster
+Ras_sand <- raster(find_onedrive(dir = data_repo, path = "SoilGrids 5km/Sand content/Fixed/SNDPPT_M_sl4_5km_ll.tif")) %>%
+  crop(Shp_UK) %>%
+  mask(Shp_UK)
+
+# wheat area raster
+# Ras_wheat <- raster(find_onedrive(dir = data_repo, path = "MapSPAM data/Physical area/phys_area_wheat.tif"))
+# replace this with read-in of .rds-saved bricks in projdata repo (created with separate script)
+# may want to rename this script
+
+# create raster so we can join data at DA level
+Ras_DA <- Ras_sand # sand % makes a good template
+Ras_DA[!is.na(Ras_DA %>% mask(subset(Shp_UK, Shp_UK@data[["NAME_1"]]=="England")))] <- 1
+Ras_DA[!is.na(Ras_DA %>% mask(subset(Shp_UK, Shp_UK@data[["NAME_1"]]=="Northern Ireland")))] <- 2
+Ras_DA[!is.na(Ras_DA %>% mask(subset(Shp_UK, Shp_UK@data[["NAME_1"]]=="Scotland")))] <- 3
+Ras_DA[!is.na(Ras_DA %>% mask(subset(Shp_UK, Shp_UK@data[["NAME_1"]]=="Wales")))] <- 4
 
 #####################################################
 # process historical spatial data for monthly climate variables
@@ -50,9 +69,6 @@ Brk_precip <- brick(find_onedrive(dir = data_repo, path = "CRU TS v4-03/pre/cru_
 
 # monthly average temperature, degrees Celsius
 Brk_temp <- brick(find_onedrive(dir = data_repo, path = "CRU TS v4-03/tmp/cru_ts4.03.1901.2018.tmp.dat.nc"), var = "tmp")
-
-# long/lat for bush estate farm
-bush_estate <- tibble(x = -3.215073, y = 55.864774)
 
 # create tibble with climate data extracted from raster bricks
 Dat_clim <- tibble(date = Brk_precip %>% names(),
