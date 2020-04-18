@@ -12,11 +12,11 @@ projdata_repo <- "Soils-R-GGREAT/UK Soil C MACC/project-data"
 Dat_tasAnom <- read_rds(find_onedrive(dir = gisdata_repo, path = "UKCP/tasAnom-b8100-1960-2099-regional-3000sample-reshaped.rds"))
 Dat_prAnom <- read_rds(find_onedrive(dir = gisdata_repo, path = "UKCP/prAnom-b8100-1960-2099-regional-3000sample-reshaped.rds"))
 
-# select random set of 500 samples to give us something manageable to work with
+# select random set of 100 samples to give us something manageable to work with
 # random samples from 1:3000, no replacement
 set.seed(2605)
 samples <- tibble(x = 1:3000) %>%
-  sample_n(500, replace = F) %>%
+  sample_n(100, replace = F) %>%
   arrange(x) %>%
   pull(x)
 
@@ -87,9 +87,12 @@ Brk_temp <- Brk_temp %>% mask(Ras_DA)
 years <- names(Brk_precip) %>%
   str_extract("(?<=^X)\\d{4}") %>%
   as.numeric()
-select <- which(years >= 1961)
-Brk_precip <- Brk_precip[[select]]
-Brk_temp <- Brk_temp[[select]]
+keep <- which(years >= 1961)
+Brk_precip <- Brk_precip[[keep]]
+Brk_temp <- Brk_temp[[keep]]
+
+# add in DA raster to precipitation brick
+Brk_precip <- Brk_precip %>% addLayer(Ras_DA)
 
 # convert to data frame
 Dat_precip <- Brk_precip %>% as.data.frame(xy = T) %>% as_tibble()
@@ -99,8 +102,8 @@ Dat_temp <- Brk_temp %>% as.data.frame(xy = T) %>% as_tibble()
 sum(Dat_precip$x != Dat_temp$x)
 sum(Dat_precip$y != Dat_temp$y)
 
-colnames(Dat_precip) <- colnames(Dat_precip) %>% str_replace("X", "precip")
-colnames(Dat_temp) <- colnames(Dat_temp) %>% str_replace("X", "temp")
+colnames(Dat_precip) <- colnames(Dat_precip) %>% str_replace("^X", "precip")
+colnames(Dat_temp) <- colnames(Dat_temp) %>% str_replace("^X", "temp")
 
 # bind cols
 Dat_clim <- Dat_precip %>%
@@ -111,7 +114,7 @@ rm(Dat_temp, Dat_precip, Brk_precip, Brk_temp)
 
 # gather
 Dat_clim <- Dat_clim %>%
-  gather(-x, -y, key = key, value = value) %>%
+  gather(-x, -y, -DA_num, key = key, value = value) %>%
   mutate(metric = key %>%
            str_extract("^[:lower:]+(?=\\d)"),
          date = key %>%
@@ -127,36 +130,35 @@ clim_av <- Dat_clim %>%
   filter(date >= "1981-01-01" %>% ymd(),
          date <= "2000-12-31" %>% ymd()) %>%
   mutate(month = month(date)) %>%
-  group_by(x, y, month) %>%
+  group_by(x, y, DA_num, month) %>%
   summarise(precip_mm = mean(precip_mm),
-            temp_centigrade = mean(temp_centigrade))
+            temp_centigrade = mean(temp_centigrade)) %>%
+  ungroup() %>%
+  left_join(tibble(DA_num = c(1, 2, 3, 4),
+                   DA = c("England", "NorthernIreland", "Scotland", "Wales")),
+            by = "DA_num") %>%
+  select(x, y, DA, month, precip_mm, temp_centigrade)
 
 # join and prep anomaly data
 # not interested in anomalies before 2019 — need some small overlap though
 Dat_anom <- full_join(Dat_tasAnom, Dat_prAnom, by = c("sample", "date", "region_chr")) %>%
-  select(-region_chr) %>%
-  rename(precip_mm = prAnom, temp_centigrade = tasAnom) %>%
+  rename(precip_mm = prAnom, temp_centigrade = tasAnom, DA = region_chr) %>%
   filter(date >= ymd("2019-01-01"),
          date < ymd("2098-01-01"))
 
 # get rid of large anomaly datasets
 rm(Dat_tasAnom, Dat_prAnom)
 
-# join climate average by month and adjust with anomalies
+# join climate average by x, y, and month and adjust with anomalies
 Dat_anom <- Dat_anom %>%
   mutate(month = month(date),
          year = year(date)) %>%
-  left_join(clim_av, by = "month") %>%
-  mutate(temp_centigrade = temp_centigrade.x + temp_centigrade.y,
-         precip_mm = precip_mm.x + precip_mm.y) %>%
-  select(sample, date, month, year, temp_centigrade, precip_mm)
-
-rm(clim_av)
+  filter(DA %in% c("England", "NorthernIreland", "Wales", "Scotland"))
 
 # nesting data by sample at this point
 Dat_main <- Dat_anom %>%
   mutate(date = as_date(date)) %>% # should have done this earlier
-  group_by(sample) %>%
+  group_by(sample, DA) %>%
   nest()
 
 # compress and interpolate where necessary
@@ -187,28 +189,74 @@ Dat_main <- Dat_main %>%
            })
   )
 
-# bind rows to historical climate data
+# join clim_av to individual months/samples and adjust
 Dat_main <- Dat_main %>%
-  mutate(data_full = data_reg %>%
-           map(function(df){
-             bind_rows("historical" = Dat_clim %>%
-                         mutate(month = month(date),
-                                year = year(date)) %>%
-                         select(month, year, temp_centigrade, precip_mm),
-                       "simulated" = df,
+  mutate(data_full = map2(DA, data_reg, function(da, df){
+    df %>%
+      mutate(DA = da) %>%
+      full_join(clim_av %>% filter(DA == da), by = c("DA", "month")) %>%
+      mutate(temp_centigrade = temp_centigrade.x + temp_centigrade.y,
+             precip_mm = precip_mm.x + precip_mm.y) %>%
+      select(x, y, month, year, precip_mm, temp_centigrade) %>%
+      arrange(x, y, year, month)
+  }))
+
+
+# lose transitional data and re-nest with lat/lon outside
+Dat_main <- Dat_main %>%
+  select(sample, DA, data_full) %>%
+  unnest(cols = c(data_full)) %>%
+  group_by(x, y, sample, DA) %>%
+  nest()
+
+# bind rows to historical climate data
+Dat_clim <- Dat_clim %>%
+  mutate(month = month(date),
+         year = year(date)) %>%
+  select(x, y, month, year, precip_mm, temp_centigrade) %>%
+  nest(historic = c(month, year, precip_mm, temp_centigrade))
+
+Dat_main <- Dat_main %>%
+  rename(simulated = data) %>%
+  left_join(Dat_clim, by = c("x", "y"))
+
+# join
+Dat_main <- Dat_main %>%
+  mutate(clim_joined = map2(historic, simulated, function(df1, df2){
+             bind_rows("historical" = df1,
+                       "simulated" = df2,
                        .id = "origin")
            }))
+
+# this is a key stage in data wrangling -- write out .rds here for potential future uses
+write_rds(Dat_main, find_onedrive(dir = projdata_repo, path = "uk-full-climvars-1961-2098-100s.rds"))
 
 # calculate pet using thornthwaite method
 # https://upcommons.upc.edu/bitstream/handle/2117/89152/Appendix_10.pdf?sequence=3&isAllowed=y
 
-# theoretical daylight hours for edinburgh https://www.timeanddate.com/sun/uk/edinburgh?month=2&year=2020
-daylength <- tibble(month = 1:12,
-                    days = c(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31),
-                    dayhours = c(7, 9, 11, 14, 16, 17, 16, 14, 12, 10, 8, 6),
-                    daymins = c(36, 36, 55, 18, 24, 34, 56, 59, 35, 22, 11, 59),
-                    daylight_hours = dayhours + daymins / 60) %>%
-  select(month, days, daylight_hours)
+# daylength calculations using insol
+library(insol)
+
+lats <- Dat_main %>%
+  pull(y) %>%
+  unique()
+
+
+jdays <- tibble(date = seq(from = ymd("2019-01-01"), to = ymd("2019-12-31"), by = as.difftime(days(1)))) %>%
+  mutate(month = month(date),
+         jday = yday(date)) %>%
+  group_by(month) %>%
+  summarise(jday = mean(jday))
+  
+
+daylength <- tibble(y = rep(lats, 12),
+                    month = rep(1:12, each = length(lats))) %>%
+  left_join(jdays, by = "month") %>%
+  mutate(lon = 0,
+         time_zone = 0,
+         daylength = pmap_dbl(list(y, lon, jday, time_zone), function(a, b, c, d){
+           return(daylength(a, b, c, d)[3])
+         }))
 
 # function required to combat annoying R 'feature' (returns NaN for negative numbers raised to non-integer powers...)
 rtp <- function(x, power){
@@ -224,7 +272,7 @@ Dat_main <- Dat_main %>%
                       alpha = 675*10^-9 * rtp(I, 3) - 771*10^-7 * rtp(I, 2) + 1792*10^-5 * I + 0.49239,
                       pet_mm = rtp(16 * ((10 * temp_centigrade) / I), alpha)) %>%
                ungroup() %>%
-               left_join(daylength, by = "month") %>%
+               left_join(daylength %>% select(y, month, daylength), by = c("y", "month")) %>%
                mutate(pet_mm = pet_mm * daylight_hours / 12 * days / 30,
                       pet_mm = ifelse(pet_mm < 1, 1, pet_mm)) %>% # prevents errors with negative PET/div by zero
                select(-I, -alpha, -days, -daylight_hours)
