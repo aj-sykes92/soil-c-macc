@@ -5,11 +5,12 @@ library(rgdal)
 library(tidyverse)
 library(lubridate)
 
-data_repo <- "GIS data repository"
+gisdata_repo <- "GIS data repository"
+projdata_repo <- "Soils-R-GGREAT/UK Soil C MACC/project-data"
 
 # read in precip and temp anomalies saved in useful format
-Dat_tasAnom <- read_rds(find_onedrive(dir = data_repo, path = "UKCP/tasAnom-b8100-1960-2099-regional-3000sample-reshaped.rds"))
-Dat_prAnom <- read_rds(find_onedrive(dir = data_repo, path = "UKCP/prAnom-b8100-1960-2099-regional-3000sample-reshaped.rds"))
+Dat_tasAnom <- read_rds(find_onedrive(dir = gisdata_repo, path = "UKCP/tasAnom-b8100-1960-2099-regional-3000sample-reshaped.rds"))
+Dat_prAnom <- read_rds(find_onedrive(dir = gisdata_repo, path = "UKCP/prAnom-b8100-1960-2099-regional-3000sample-reshaped.rds"))
 
 # select random set of 500 samples to give us something manageable to work with
 # random samples from 1:3000, no replacement
@@ -40,17 +41,16 @@ glimpse(Dat_prAnom)
 #####################################################
 
 # uk shapefile w/ DAs
-Shp_UK <- shapefile(find_onedrive(dir = data_repo, path = "DA shapefile/GBR_adm_shp/GBR_adm1.shp"))
+Shp_UK <- shapefile(find_onedrive(dir = gisdata_repo, path = "DA shapefile/GBR_adm_shp/GBR_adm1.shp"))
 
 # sand % raster
-Ras_sand <- raster(find_onedrive(dir = data_repo, path = "SoilGrids 5km/Sand content/Fixed/SNDPPT_M_sl4_5km_ll.tif")) %>%
+Ras_sand <- raster(find_onedrive(dir = gisdata_repo, path = "SoilGrids 5km/Sand content/Fixed/SNDPPT_M_sl4_5km_ll.tif")) %>%
   crop(Shp_UK) %>%
   mask(Shp_UK)
 
-# wheat area raster
-# Ras_wheat <- raster(find_onedrive(dir = data_repo, path = "MapSPAM data/Physical area/phys_area_wheat.tif"))
-# replace this with read-in of .rds-saved bricks in projdata repo (created with separate script)
-# may want to rename this script
+# wheat area and yield bricks
+Brk_wheatarea <- read_rds(find_onedrive(dir = projdata_repo, path = "uk-wheat-area-spatial-ts.rds"))
+Brk_wheatyield <- read_rds(find_onedrive(dir = projdata_repo, path = "uk-wheat-yield-spatial-ts.rds"))
 
 # create raster so we can join data at DA level
 Ras_DA <- Ras_sand # sand % makes a good template
@@ -58,6 +58,7 @@ Ras_DA[!is.na(Ras_DA %>% mask(subset(Shp_UK, Shp_UK@data[["NAME_1"]]=="England")
 Ras_DA[!is.na(Ras_DA %>% mask(subset(Shp_UK, Shp_UK@data[["NAME_1"]]=="Northern Ireland")))] <- 2
 Ras_DA[!is.na(Ras_DA %>% mask(subset(Shp_UK, Shp_UK@data[["NAME_1"]]=="Scotland")))] <- 3
 Ras_DA[!is.na(Ras_DA %>% mask(subset(Shp_UK, Shp_UK@data[["NAME_1"]]=="Wales")))] <- 4
+names(Ras_DA) <- "DA_num"
 
 #####################################################
 # process historical spatial data for monthly climate variables
@@ -65,25 +66,68 @@ Ras_DA[!is.na(Ras_DA %>% mask(subset(Shp_UK, Shp_UK@data[["NAME_1"]]=="Wales")))
 #####################################################
 
 # precipitation, mm per month
-Brk_precip <- brick(find_onedrive(dir = data_repo, path = "CRU TS v4-03/pre/cru_ts4.03.1901.2018.pre.dat.nc"), var = "pre")
+Brk_precip <- brick(find_onedrive(dir = gisdata_repo, path = "CRU TS v4-03/pre/cru_ts4.03.1901.2018.pre.dat.nc"), var = "pre")
 
 # monthly average temperature, degrees Celsius
-Brk_temp <- brick(find_onedrive(dir = data_repo, path = "CRU TS v4-03/tmp/cru_ts4.03.1901.2018.tmp.dat.nc"), var = "tmp")
+Brk_temp <- brick(find_onedrive(dir = gisdata_repo, path = "CRU TS v4-03/tmp/cru_ts4.03.1901.2018.tmp.dat.nc"), var = "tmp")
 
-# create tibble with climate data extracted from raster bricks
-Dat_clim <- tibble(date = Brk_precip %>% names(),
-                   precip_mm = raster::extract(Brk_precip, bush_estate) %>% as.numeric(),
-                   temp_centigrade = raster::extract(Brk_temp, bush_estate) %>% as.numeric()) %>%
-  mutate(date = date %>% str_replace("X", "") %>% ymd())
+# crop to extent of DA raster
+Brk_precip <- Brk_precip %>% crop(Ras_DA)
+Brk_temp <- Brk_temp %>% crop(Ras_DA)
 
-# remove bricks
-rm(Brk_precip, Brk_temp)
+# resample to DA resolution
+Brk_precip <- Brk_precip %>% resample(Ras_DA)
+Brk_temp <- Brk_temp %>% resample(Ras_DA)
 
+# mask to DA coverage
+Brk_precip <- Brk_precip %>% mask(Ras_DA)
+Brk_temp <- Brk_temp %>% mask(Ras_DA)
+
+# remove layers pre-1961 (earliest yield data)
+years <- names(Brk_precip) %>%
+  str_extract("(?<=^X)\\d{4}") %>%
+  as.numeric()
+select <- which(years >= 1961)
+Brk_precip <- Brk_precip[[select]]
+Brk_temp <- Brk_temp[[select]]
+
+# convert to data frame
+Dat_precip <- Brk_precip %>% as.data.frame(xy = T) %>% as_tibble()
+Dat_temp <- Brk_temp %>% as.data.frame(xy = T) %>% as_tibble()
+
+# check we can bind cols (less intensive than join by c(x, y))
+sum(Dat_precip$x != Dat_temp$x)
+sum(Dat_precip$y != Dat_temp$y)
+
+colnames(Dat_precip) <- colnames(Dat_precip) %>% str_replace("X", "precip")
+colnames(Dat_temp) <- colnames(Dat_temp) %>% str_replace("X", "temp")
+
+# bind cols
+Dat_clim <- Dat_precip %>%
+  bind_cols(Dat_temp %>% select(-x, -y))
+
+# remove precursors
+rm(Dat_temp, Dat_precip, Brk_precip, Brk_temp)
+
+# gather
+Dat_clim <- Dat_clim %>%
+  gather(-x, -y, key = key, value = value) %>%
+  mutate(metric = key %>%
+           str_extract("^[:lower:]+(?=\\d)"),
+         date = key %>%
+           str_replace_all("[:lower:]", "") %>%
+           ymd()) %>%
+  select(-key) %>%
+  spread(key = metric, value = value) %>%
+  rename(precip_mm = precip, temp_centigrade = temp) %>%
+  drop_na()
+
+# calculate average climate for anom processing
 clim_av <- Dat_clim %>%
   filter(date >= "1981-01-01" %>% ymd(),
          date <= "2000-12-31" %>% ymd()) %>%
   mutate(month = month(date)) %>%
-  group_by(month) %>%
+  group_by(x, y, month) %>%
   summarise(precip_mm = mean(precip_mm),
             temp_centigrade = mean(temp_centigrade))
 
