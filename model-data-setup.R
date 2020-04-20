@@ -228,8 +228,12 @@ Dat_main <- Dat_main %>%
                        .id = "origin")
            }))
 
+# select only joined data
+Dat_main <- Dat_main %>% select(-historic, -simulated)
+
 # this is a key stage in data wrangling -- write out .rds here for potential future uses
-write_rds(Dat_main, find_onedrive(dir = projdata_repo, path = "uk-full-climvars-1961-2098-100s.rds"))
+# write_rds(Dat_main, "D:/Alasdair/GIS data repository/uk-full-climvars-1961-2098-100s.rds")
+# Dat_main <- read_rds("D:/Alasdair/GIS data repository/uk-full-climvars-1961-2098-100s.rds"))
 
 # calculate pet using thornthwaite method
 # https://upcommons.upc.edu/bitstream/handle/2117/89152/Appendix_10.pdf?sequence=3&isAllowed=y
@@ -244,9 +248,11 @@ lats <- Dat_main %>%
 
 jdays <- tibble(date = seq(from = ymd("2019-01-01"), to = ymd("2019-12-31"), by = as.difftime(days(1)))) %>%
   mutate(month = month(date),
-         jday = yday(date)) %>%
+         jday = yday(date),
+         mday = days_in_month(date)) %>%
   group_by(month) %>%
-  summarise(jday = mean(jday))
+  summarise(mday = mean(mday),
+            jday = mean(jday))
   
 
 daylength <- tibble(y = rep(lats, 12),
@@ -264,49 +270,35 @@ rtp <- function(x, power){
 }
 
 Dat_main <- Dat_main %>%
-  mutate(data_full = data_full %>%
+  mutate(clim_joined = map2(y, clim_joined, function(lat, df){
+    df %>%
+      mutate(y = lat) %>%
+      group_by(year) %>%
+      mutate(I = sum(rtp(temp_centigrade / 5, 1.514)),
+            alpha = 675*10^-9 * rtp(I, 3) - 771*10^-7 * rtp(I, 2) + 1792*10^-5 * I + 0.49239,
+            pet_mm = rtp(16 * ((10 * temp_centigrade) / I), alpha)) %>%
+      ungroup() %>%
+      left_join(daylength %>% select(y, month, daylength, mday), by = c("y", "month")) %>%
+      mutate(pet_mm = pet_mm * daylength / 12 * mday / 30,
+             pet_mm = ifelse(pet_mm < 1, 1, pet_mm)) %>% # prevents errors with negative PET/div by zero
+      select(-y, -I, -alpha, -mday, -daylength) %>%
+      mutate(precip_mm = ifelse(precip_mm < 0, 0, precip_mm)) # # another quick and dirty fix for potential errors - occasional negative precipitation values
+    }))
+
+# write out main data as raw file
+# write_rds(Dat_main, "D:/Alasdair/GIS data repository/uk-full-climvars-1961-2098-100s.rds")
+
+# condense to annual tfac/wfac to minimise data read in/out when running model
+source("ipcc-c-model-functions.R")
+
+Dat_main <- Dat_main %>%
+  mutate(clim_annual = clim_joined %>%
            map(function(df){
              df %>%
                group_by(year) %>%
-               mutate(I = sum(rtp(temp_centigrade / 5, 1.514)),
-                      alpha = 675*10^-9 * rtp(I, 3) - 771*10^-7 * rtp(I, 2) + 1792*10^-5 * I + 0.49239,
-                      pet_mm = rtp(16 * ((10 * temp_centigrade) / I), alpha)) %>%
-               ungroup() %>%
-               left_join(daylength %>% select(y, month, daylength), by = c("y", "month")) %>%
-               mutate(pet_mm = pet_mm * daylight_hours / 12 * days / 30,
-                      pet_mm = ifelse(pet_mm < 1, 1, pet_mm)) %>% # prevents errors with negative PET/div by zero
-               select(-I, -alpha, -days, -daylight_hours)
+               summarise(wfac = wfac(precip = precip_mm, PET = pet_mm),
+                         tfac = tfac(temp = temp_centigrade)) %>%
+               ungroup()
            }))
 
-# another quick and dirty fix for potential errors - occasional negative precipitation values
-Dat_main <- Dat_main %>%
-  mutate(data_full = data_full %>%
-           map(function(df){
-             df %>%
-               mutate(precip_mm = ifelse(precip_mm < 0, 0, precip_mm))
-           }))
-
-# write out main data
-write_rds(Dat_main, "non-model-data/not-for-github/bush-estate-1901-2097-climvars-500-samples.rds")
-
-# trim to 1990-2070 on for student tutorial
-Dat_main %>%
-  select(sample, data_full) %>%
-  mutate(data_full = data_full %>%
-           map(function(df){
-             df %>%
-               filter(year >= 1980,
-                      year <= 2070)
-           })) %>%
-  write_rds("non-model-data/not-for-github/bush-estate-1980-2070-climvars-500-samples.rds")
-
-# don't run unless needed, takes a minute
-#Dat_main %>%
-#  unnest(cols = data_full) %>%
-#  filter(year >= 1980,
-#         year <= 2070) %>%
-#  mutate(yearmonth = year + (month - 0.5) / 12) %>%
-#  ggplot(aes(x = yearmonth, y = precip_mm, group = sample)) +
-#  geom_line(alpha = 0.01)
-
-
+write_rds(Dat_main %>% select(-clim_joined), "D:/Alasdair/GIS data repository/uk-annual-climvars-1961-2098-100s.rds")
