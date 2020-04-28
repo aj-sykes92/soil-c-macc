@@ -10,6 +10,9 @@ data_repo <- "GIS data repository"
 Ncdf_tasAnom <- nc_open(find_onedrive(dir = data_repo, path = "UKCP/tasAnom_rcp45_land-prob_uk_country_sample_b8100_1y_mon_19601201-20991130.nc"))
 Ncdf_tasAnom
 
+Ncdf_prAnom <- nc_open(find_onedrive(dir = data_repo, path = "UKCP/prAnom_rcp45_land-prob_uk_country_sample_b8100_1y_mon_19601201-20991130.nc"))
+Ncdf_prAnom
+
 # extract names / numbers of regions for later use
 regions <- tibble(region = ncvar_get(Ncdf_tasAnom, "region"),
                   region_chr = ncvar_get(Ncdf_tasAnom, "geo_region") %>% str_replace_all("\\s+", ""))
