@@ -196,7 +196,7 @@ Dat_main <- Dat_main %>%
       mutate(DA = da) %>%
       full_join(clim_av %>% filter(DA == da), by = c("DA", "month")) %>%
       mutate(temp_centigrade = temp_centigrade.x + temp_centigrade.y,
-             precip_mm = precip_mm.x + precip_mm.y) %>%
+             precip_mm = (1 + precip_mm.x / 100) * precip_mm.y) %>%
       select(x, y, month, year, precip_mm, temp_centigrade) %>%
       arrange(x, y, year, month)
   }))
@@ -286,7 +286,7 @@ Dat_main <- Dat_main %>%
     }))
 
 # write out main data as raw file
-# write_rds(Dat_main, "D:/Alasdair/GIS data repository/uk-full-climvars-1961-2098-100s.rds")
+write_rds(Dat_main, "D:/Alasdair/GIS data repository/uk-full-climvars-1961-2098-100s.rds")
 
 # condense to annual tfac/wfac to minimise data read in/out when running model
 source("ipcc-c-model-functions.R")
