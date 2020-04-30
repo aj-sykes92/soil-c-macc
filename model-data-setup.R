@@ -302,3 +302,6 @@ Dat_main <- Dat_main %>%
            }))
 
 write_rds(Dat_main %>% select(-clim_joined), "D:/Alasdair/GIS data repository/uk-annual-climvars-1961-2098-100s.rds")
+
+# small sample (~17MB) to cloud for local analysis/script dev
+write_rds(Dat_main %>% select(-clim_joined) %>% filter(sample == 26), find_onedrive(dir = projdata_repo, path = "climate-data-processed-small-sample.rds"))
