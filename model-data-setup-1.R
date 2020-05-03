@@ -37,7 +37,7 @@ glimpse(Dat_tasAnom)
 glimpse(Dat_prAnom)
 
 #####################################################
-# process environmental spatial data
+# create DA raster to allow joins at DA level
 #####################################################
 
 # uk shapefile w/ DAs
@@ -47,10 +47,6 @@ Shp_UK <- shapefile(find_onedrive(dir = gisdata_repo, path = "DA shapefile/GBR_a
 Ras_sand <- raster(find_onedrive(dir = gisdata_repo, path = "SoilGrids 5km/Sand content/Fixed/SNDPPT_M_sl4_5km_ll.tif")) %>%
   crop(Shp_UK) %>%
   mask(Shp_UK)
-
-# wheat area and yield bricks
-Brk_wheatarea <- read_rds(find_onedrive(dir = projdata_repo, path = "uk-wheat-area-spatial-ts.rds"))
-Brk_wheatyield <- read_rds(find_onedrive(dir = projdata_repo, path = "uk-wheat-yield-spatial-ts.rds"))
 
 # create raster so we can join data at DA level
 Ras_DA <- Ras_sand # sand % makes a good template
