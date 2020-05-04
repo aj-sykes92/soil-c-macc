@@ -1,6 +1,5 @@
-
-library(tidyverse)
 library(raster)
+library(tidyverse)
 
 gisdata_repo <- "GIS data repository"
 projdata_repo <- "Soils-R-GGREAT/UK Soil C MACC/project-data"
@@ -63,11 +62,10 @@ Dat_wheat <- Dat_wheat %>%
 # add in wheat projections (stochastic, by sample)
 
 annual_yield_inc <- 0.008 # estimated UK yield increase for wheat from Ray et al. (2013)
+plateau <- 1 + (0.008 * (2050-2020)) # Ray et al. only make predictions to 2050
 
-# some notion of altering linear increase assumption here
-# not much to work with though!
-plateau <- 1 + annual_yield_inc * (2050 - 2020) # Ray et al.'s original predictions were to 2050
-yield_gap <- 1 - (linear / plateau)
+yield_curve <- tibble(year = 2019:2097,
+                      ry = plateau + ((1.008-plateau) / (1 + 0.08 * (year - (2019-1))))) # empirically calibrated d value here (0.08) - balance early increases similar to reported (0.008) with reasonable curvature given timespan
 
 # apply stochastic projections
 set.seed(2605)
@@ -87,7 +85,7 @@ Dat_wheat <- Dat_wheat %>%
              sim_df <- tibble(year = 2019:2097,
                               area = finalyeararea,
                               yield_smooth = fiveyearmean,
-                              frac_increase = seq(from = 1, by = frac_yield_inc, length.out = length(2019:2097))) %>%
+                              frac_increase = yield_curve$ry) %>%
                mutate(yield_smooth = yield_smooth * frac_increase,
                       yield = yield_smooth + yield_smooth * rnorm(n = length(2019:2097), mean = 0, sd = res_sd)) %>%
                select(year, area, yield)
@@ -98,10 +96,13 @@ Dat_wheat <- Dat_wheat %>%
                return()
            }))
 
+rm(res_sd, yield_smooth_2018, annual_yield_inc, plateau)
+Dat_wheat$crop_data[[4]] %>%
+  ggplot(aes(x = year, y = yield, colour = origin)) +
+  geom_line()
+
 # join up climate and crop data
-# this works but for some reason it loses ~ 300 cells
-# why???
-temp <- Dat_clim %>%
+Dat_main <- Dat_clim %>%
   ungroup() %>%
   mutate(x = x %>% round(6),
          y = y %>% round(6)) %>%
@@ -111,11 +112,53 @@ temp <- Dat_clim %>%
             by = c("x", "y")) %>%
   drop_na(crop)
 
+# below are checks to ensure join worked correctly
+# lay joined data over wheat data
+ggplot() +
+  geom_raster(data = Dat_wheat,
+              aes(x = x, y = y), fill = "blue") +
+  geom_raster(data = Dat_main,
+              aes(x = x, y = y), fill = "red") +
+  coord_quickmap()
+# non-joined data = ROI, mainland Europe + 3-4 errant pixels
+# former is as it should be and can live with the latter
 
+# lay joined data over climate data
+ggplot() +
+  geom_raster(data = Dat_clim,
+              aes(x = x, y = y), fill = "blue") +
+  geom_raster(data = Dat_main,
+              aes(x = x, y = y), fill = "red") +
+  coord_quickmap()
+# no wheat in missing (non-joined) areas - as it should be
 
-temp <- Dat_wheat %>%
-  sample_n(100) %>%
-  pull(x)
+# join in sand data too
+Dat_main <- Dat_main %>%
+  left_join(
+    Ras_sand %>%
+      as.data.frame(xy = T) %>%
+      as_tibble() %>%
+      rename(sand_frac = SNDPPT_M_sl4_5km_ll) %>%
+      mutate(x = x %>% round(6),
+             y = y %>% round(6),
+             sand_frac = sand_frac * 10^-2),
+    by = c("x", "y")
+  )
 
-round(temp, 10) %in% round(Dat_clim$x, 10)
+# renest
+Dat_main <- Dat_main %>%
+  mutate(data = pmap(list(crop_data,
+                          clim_annual,
+                          crop,
+                          sand_frac),
+                     function(df_crop, df_clim, croptype, sandfrac){
+                       df_crop %>%
+                         left_join(df_clim, by = "year") %>%
+                         mutate(crop_type = croptype,
+                                sand_frac = sandfrac) %>%
+                         rename(yield_tha = yield, area_ha = area)
+                     })) %>%
+  select(-crop_data, -clim_annual, -crop, -sand_frac)
 
+# write out
+write_rds(Dat_main, find_onedrive(dir = projdata_repo, path = "model-data-input-small-sample.rds"))
