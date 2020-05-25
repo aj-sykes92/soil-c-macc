@@ -10,12 +10,13 @@ Ras_clay <- find_onedrive(dir = gisdata_repo, path = "SoilGrids250/CLYPPT_M_sl4_
 Ras_wheatarea <- find_onedrive(dir = gisdata_repo, path = "MapSPAM data/Physical area/phys_area_wheat.tif") %>% raster()
 Shp_UK <- shapefile(find_onedrive(dir = gisdata_repo, path = "DA shapefile/GBR_adm_shp/GBR_adm1.shp"))
 
-Ras_clay <- Ras_clay %>% crop(Shp_UK) %>% mask(Shp_UK)
+# raster for clay % @250m, uk mask
+#Ras_clay <- Ras_clay %>% crop(Shp_UK) %>% mask(Shp_UK)
+# write_rds(Ras_clay, find_onedrive(dir = projdata_repo, path = "clay-sl4-sg250-uk-mask.rds"))
+Ras_clay <- read_rds(find_onedrive(dir = projdata_repo, path = "clay-sl4-sg250-uk-mask.rds"))
+
+# wheat area, UK mask
 Ras_wheatarea <- Ras_wheatarea %>% crop(Shp_UK) %>% mask(Shp_UK)
-
-plot(Ras_clay)
-
-hist(Ras_clay)
 
 # data on cover crop uptake from Storr et al. (2019)
 Dat_cc <- tibble(years = 1:10,
@@ -31,8 +32,8 @@ ggplot(Dat_cc, aes(x = date, y = uptake_frac)) +
 
 
 Dat_prob <- tibble(date = 1961:2097,
-                   quqnt = (date - 1961) / (2097 - 1961))
-                   uptake_frac = pnorm(q = quant, mean = 0.5, sd = 1))
+                   quant = (date - 1961) / (2097 - 1961)) %>%
+  mutate(uptake_frac = pnorm(q = quant, mean = 0.5, sd = 1))
      
 
 
@@ -45,10 +46,3 @@ Dat_prob <- tibble(date = 1961:2097,
 ggplot() +
   geom_smooth(data = Dat_cc, aes(x = date, y = uptake_frac)) +
   geom_line(data = Dat_prob, aes(x = date, y = uptake_frac))
-
-library(raster)
-
-Ras_clay <- find_onedrive(dir = projdata_repo, path = )
-
-
-
