@@ -4,7 +4,7 @@ library(readxl)
 
 # part 1
 # sheets to read from BSFP manure dataset
-sheets <- excel_sheets("Manure-application-rates.xlsx")
+sheets <- excel_sheets("manure-data/manure-application-rates.xlsx")
 sheets <- sheets[str_detect(sheets, "^\\d{4}$")]
 
 sheets = sheets[sheets != "2007"] # data incomplete
@@ -25,7 +25,7 @@ Dat_man <- tibble(type = c("cattle_fym",
 for(i in 1:length(sheets)){
   
   # winter
-  data <- read_xlsx("Manure-application-rates.xlsx",
+  data <- read_xlsx("manure-data/manure-application-rates.xlsx",
             sheet = sheets[i],
             range = "C26:L26",
             col_names = F) %>%
@@ -36,7 +36,7 @@ for(i in 1:length(sheets)){
   Dat_man <- bind_cols(Dat_man, data)
   
   # spring
-  data <- read_xlsx("Manure-application-rates.xlsx",
+  data <- read_xlsx("manure-data/manure-application-rates.xlsx",
                     sheet = sheets[i],
                     range = "C31:L31",
                     col_names = F) %>%
@@ -47,7 +47,7 @@ for(i in 1:length(sheets)){
   # grass
   Dat_man <- bind_cols(Dat_man, data)
   
-  data <- read_xlsx("Manure-application-rates.xlsx",
+  data <- read_xlsx("manure-data/manure-application-rates.xlsx",
                     sheet = sheets[i],
                     range = "C36:L36",
                     col_names = F) %>%
@@ -58,7 +58,7 @@ for(i in 1:length(sheets)){
   Dat_man <- bind_cols(Dat_man, data)
   
   # treated area winter
-  data <- read_xlsx("Manure-application-rates.xlsx",
+  data <- read_xlsx("manure-data/manure-application-rates.xlsx",
                     sheet = sheets[i],
                     range = "C6:L6",
                     col_names = F) %>%
@@ -69,7 +69,7 @@ for(i in 1:length(sheets)){
   Dat_man <- bind_cols(Dat_man, data)
   
   # treated area spring
-  data <- read_xlsx("Manure-application-rates.xlsx",
+  data <- read_xlsx("manure-data/manure-application-rates.xlsx",
                     sheet = sheets[i],
                     range = "C12:L12",
                     col_names = F) %>%
@@ -80,7 +80,7 @@ for(i in 1:length(sheets)){
   Dat_man <- bind_cols(Dat_man, data)
   
   # treated area grass
-  data <- read_xlsx("Manure-application-rates.xlsx",
+  data <- read_xlsx("manure-data/manure-application-rates.xlsx",
                     sheet = sheets[i],
                     range = "C18:L18",
                     col_names = F) %>%
@@ -107,7 +107,7 @@ Dat_man <- Dat_man %>%
 
 # part 2
 # read in faostat long manure ts
-Dat_fs <- read_csv("faostat-manure-ts.csv")
+Dat_fs <- read_csv("manure-data/faostat-manure-ts.csv")
 
 # quick squint
 Dat_fs %>%
@@ -173,3 +173,23 @@ ggplot(Dat_fs, aes(x = year, y = kg, colour = trans, group = trans)) +
 ggplot(Dat_man %>% mutate(kg = nrate * treatfrac / 100), aes(x = year, y = kg, colour = trans, group = trans)) +
   geom_line() +
   facet_wrap(~ croptype, nrow = 3)
+
+# non timeseries summarised dataset w/ unc'y estimates for app rates 2008-15
+Dat_manrate <- Dat_man %>%
+  group_by(trans, croptype) %>%
+  summarise(nrate_mean = mean(nrate),
+            nrate_sd = sd(nrate),
+            treatfrac_mean = mean(treatfrac),
+            treatfrac_sd = sd(treatfrac))
+
+# timeseries dataset w/ relative abundance of manures by type
+Dat_rel <- Dat_fs %>%
+  group_by(trans) %>%
+  mutate(kg_2015 = kg[year == 2015],
+         rel = kg / kg_2015) %>%
+  dplyr::select(trans, year, rel)
+
+# write out
+write_rds(Dat_manrate, "manure-data/manure-app-rates.rds")
+write_rds(Dat_rel, "manure-data/manure-rel-abundance-ts.rds")
+  
