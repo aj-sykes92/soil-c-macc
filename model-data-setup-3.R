@@ -7,8 +7,8 @@ projdata_repo <- "Soils-R-GGREAT/UK Soil C MACC/project-data"
 Dat_nest <- read_rds(find_onedrive(dir = projdata_repo, path = "model-data-input-small-sample.rds"))
 
 # manure background data
-Dat_manrate <- read_rds("manure-data/manure-app-rates.rds")
-Dat_manab <- read_rds("manure-data/manure-rel-abundance-ts.rds")
+Dat_manrate <- read_rds(find_onedrive(dir = projdata_repo, path = "manure-data/manure-app-rates.rds"))
+Dat_manab <- read_rds(find_onedrive(dir = projdata_repo, path = "manure-data/manure-rel-abundance-ts.rds"))
 
 # function to build basis for random selector (no sense repeating > once)
 build_man_selector <- function(crop){
