@@ -13,6 +13,16 @@ crop production in the United Kingdom, with the ultimate goal being the
 creation of a soil carbon marginal abatement crop curve for UK
 agriculture.
 
+The model is implemented spatially, being run at 5-arc-minute (approx
+10km) grid cell resolution, and over a temporal scale of 136 years, from
+1961 to 2097, in annual timesteps (note some data preprocessing is, by
+necessity, conducted month-wise). There is also provision to run the
+model over multiple stochastic simulations up to *n = 1000*.
+
+Documentation for the IPCC model can be found at
+<https://www.ipcc-nggip.iges.or.jp/public/2019rf/vol4.html> under
+Chapter 5 (Cropland).
+
 ## File management
 
 ‘Light’ data used by the model (e.g. model parameters, simple model
@@ -42,8 +52,6 @@ SRUC King’s Buildings was used for this purpose.
 
 ## Repo schema
 
-### Scripts
-
   - **climate-anomaly-preprocessing.R** Script to process UKCP climate
     anomaly records and predictions data from .ncdf format into .rds
     with relevant variables extracted (temperature and precipitation).
@@ -64,22 +72,63 @@ SRUC King’s Buildings was used for this purpose.
   - **model-data-setup-2.R** Script using the toy-size output from
     *model-data-setup-1.R* as the basis for further model input data
     development. This script adds physical soil data and crop data
-    (processed in *wheat-data-preprocessing.R*) to the model inputs.
+    (processed in *wheat-data-preprocessing.R*) to the model input data
+    object. Implements stochastic estimate of future wheat yield using
+    predictions from Ray et al. (2013) and yield response curve method
+    from Holland et al. (2019).
 
-### Data
+  - **model-data-setup-3.R** Script using the output from
+    *model-data-setup-2.R* as the basis for stochastic manure addition
+    estimate. Manure application rates are estimated based on historical
+    data and dressing percentages from FAOstat and the British Survey of
+    Fertiliser Practice.
 
-#### `manure-data` folder
+  - **ipcc-c-model-setup.R** Script where IPCC (2019) steady state C
+    model is set up and run.
 
-#### `parameter-data` folder
+  - **ipcc-c-model-functions.R** Script where functions comprising IPCC
+    (2019) steady state C model are defined. This is based on the Shiny
+    app implementation found at
+    <https://github.com/aj-sykes92/msc-morocco-soil-c-modelling> so
+    includes all functions required to run model, plus graphing
+    functions etc. used in the app.
+
+  - `crop-preprocessing` **folder** Folder containing preprocessing
+    scripts for crop data.
+
+  - `measure-preprocessing` **folder** Folder containing preprocessing
+    scripts for different measure scenarios.
+
+  - `parameter-data` **folder** Folder containing parameter data (in
+    .csv format) used by the IPCC C model functions.
+
+  - `parameter-data` **folder** Folder for .Rmd and .md files detailing
+    analysis developemnt.
 
 ## References
 
 <div id="refs" class="references">
 
+<div id="ref-Holland2019">
+
+Holland, J.E., White, P.J., Glendining, M.J., Goulding, K.W.T., McGrath,
+S.P., 2019. Yield responses of arable crops to liming – An evaluation of
+relationships between yields and soil pH from a long-term liming
+experiment. European Journal of Agronomy 105, 176–188.
+
+</div>
+
 <div id="ref-IPCC2019">
 
 IPCC, 2019. 2019 Refinment to the 2006 IPCC Guidelines for National
 Greenhouse Gas Inventories.
+
+</div>
+
+<div id="ref-Ray2013">
+
+Ray, D.K., Mueller, N.D., West, P.C., Foley, J.A., 2013. Yield Trends
+Are Insufficient to Double Global Crop Production by 2050. PLoS ONE 8.
 
 </div>
 
