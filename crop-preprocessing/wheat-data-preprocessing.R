@@ -10,25 +10,26 @@ library(raster)
 library(tidyverse)
 library(lubridate)
 
-# data repositories
-gisdata_repo <- "GIS data repository"
-projdata_repo <- "Soils-R-GGREAT/UK Soil C MACC/project-data"
+# data repositories in Alasdair (the script's author), using a function(dir, path)#
+#gisdata_repo <- "GIS data repository"
+#projdata_repo <- "Soils-R-GGREAT/UK Soil C MACC/project-data"
+
 
 # masking shapefile
-Shp_UK <- find_onedrive(dir = gisdata_repo, path = "DA shapefile/GBR_adm_shp/GBR_adm1.shp") %>% shapefile()
+Shp_UK <- project_data(path = "GIS-data/DA shapefile/GBR_adm_shp/GBR_adm1.shp") %>% shapefile()
 
 #####################################################
 # process crop production area and yield data
 #####################################################
-Ras_wheatarea <- raster(find_onedrive(dir = gisdata_repo, path = "MapSpam data/Physical area/phys_area_wheat.tif"))
-Ras_wheatyield <- raster(find_onedrive(dir = gisdata_repo, path = "MapSpam data/Yield/yield_wheat.tif"))
+Ras_wheatarea <- raster(project_data(path = "GIS-data/MapSpam data/Physical area/phys_area_wheat.tif"))
+Ras_wheatyield <- raster(project_data(path = "GIS-data/MapSpam data/Yield/yield_wheat.tif"))
 
 # crop to UK extent (rough until , for processing effiency)
 Ras_wheatarea <- Ras_wheatarea %>% crop(Shp_UK)
 Ras_wheatyield <- Ras_wheatyield %>% crop(Shp_UK)
 
 # time series of UK wheat area/yields from 
-Dat_wheat_ts <- read_csv(find_onedrive(dir = projdata_repo, path = "faostat-uk-wheat-prod-1961-2018.csv")) %>%
+Dat_wheat_ts <- read_csv(project_data(path = "project-data/faostat-uk-wheat-prod-1961-2018.csv")) %>%
   select(key = Element, year = Year, value = Value) %>%
   spread(key = key, value = value) %>%
   rename(area_kha = `Area harvested`, yield_tha = Yield) %>%

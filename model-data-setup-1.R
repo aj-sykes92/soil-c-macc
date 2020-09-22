@@ -5,12 +5,14 @@ library(rgdal)
 library(tidyverse)
 library(lubridate)
 
-gisdata_repo <- "GIS data repository"
-projdata_repo <- "Soils-R-GGREAT/UK Soil C MACC/project-data"
+# Double ## Indicates code used by the author'script Dr. Alasdair Sykes to source his workpath
+
+## gisdata_repo <- "GIS data repository"
+## projdata_repo <- "Soils-R-GGREAT/UK Soil C MACC/project-data"
 
 # read in precip and temp anomalies saved in useful format
-Dat_tasAnom <- read_rds(find_onedrive(dir = gisdata_repo, path = "UKCP/tasAnom-b8100-1960-2099-regional-3000sample-reshaped.rds"))
-Dat_prAnom <- read_rds(find_onedrive(dir = gisdata_repo, path = "UKCP/prAnom-b8100-1960-2099-regional-3000sample-reshaped.rds"))
+Dat_tasAnom <- read_rds(project_data(path = "GIS-data/UKCP/tasAnom-b8100-1960-2099-regional-3000sample-reshaped.rds"))
+Dat_prAnom <- read_rds(project_data(path = "GIS-data/UKCP/prAnom-b8100-1960-2099-regional-3000sample-reshaped.rds"))
 
 # select random set of 100 samples to give us something manageable to work with
 # random samples from 1:3000, no replacement
@@ -41,10 +43,10 @@ glimpse(Dat_prAnom)
 #####################################################
 
 # uk shapefile w/ DAs
-Shp_UK <- shapefile(find_onedrive(dir = gisdata_repo, path = "DA shapefile/GBR_adm_shp/GBR_adm1.shp"))
+Shp_UK <- shapefile(project_data(path = "GIS-data/DA shapefile/GBR_adm_shp/GBR_adm1.shp"))
 
 # sand % raster
-Ras_sand <- raster(find_onedrive(dir = gisdata_repo, path = "SoilGrids 5km/Sand content/Fixed/SNDPPT_M_sl4_5km_ll.tif")) %>%
+Ras_sand <- raster(project_data(path = "GIS-data/SoilGrids 5km/Sand content/Fixed/SNDPPT_M_sl4_5km_ll.tif")) %>%
   crop(Shp_UK) %>%
   mask(Shp_UK)
 
@@ -62,10 +64,10 @@ names(Ras_DA) <- "DA_num"
 #####################################################
 
 # precipitation, mm per month
-Brk_precip <- brick(find_onedrive(dir = gisdata_repo, path = "CRU TS v4-03/pre/cru_ts4.03.1901.2018.pre.dat.nc"), var = "pre")
+Brk_precip <- brick(project_data(path = "GIS-data/CRU TS v4-03/pre/cru_ts4.03.1901.2018.pre.dat.nc"), var = "pre")
 
 # monthly average temperature, degrees Celsius
-Brk_temp <- brick(find_onedrive(dir = gisdata_repo, path = "CRU TS v4-03/tmp/cru_ts4.03.1901.2018.tmp.dat.nc"), var = "tmp")
+Brk_temp <- brick(project_data(path = "GIS-data/CRU TS v4-03/tmp/cru_ts4.03.1901.2018.tmp.dat.nc"), var = "tmp")
 
 # crop to extent of DA raster
 Brk_precip <- Brk_precip %>% crop(Ras_DA)
@@ -228,8 +230,12 @@ Dat_main <- Dat_main %>%
 Dat_main <- Dat_main %>% select(-historic, -simulated)
 
 # this is a key stage in data wrangling -- write out .rds here for potential future uses
-# write_rds(Dat_main, "D:/Alasdair/GIS data repository/uk-full-climvars-1961-2098-100s.rds")
-# Dat_main <- read_rds("D:/Alasdair/GIS data repository/uk-full-climvars-1961-2098-100s.rds"))
+
+## write_rds(Dat_main, "D:/Alasdair/GIS data repository/uk-full-climvars-1961-2098-100s.rds")
+## Dat_main <- read_rds("D:/Alasdair/GIS data repository/uk-full-climvars-1961-2098-100s.rds"))
+
+write_rds(Dat_main, project_data(path = "GIS-data/UK-climvars/uk-full-climvars-1961-2098-100s.rds"))
+Dat_main <-read_rds(project_data(path = "GIS-data/UK-climvars/uk-full-climvars-1961-2098-100s.rds"))
 
 # calculate pet using thornthwaite method
 # https://upcommons.upc.edu/bitstream/handle/2117/89152/Appendix_10.pdf?sequence=3&isAllowed=y
@@ -282,7 +288,10 @@ Dat_main <- Dat_main %>%
     }))
 
 # write out main data as raw file
-write_rds(Dat_main, "D:/Alasdair/GIS data repository/uk-full-climvars-1961-2098-100s.rds")
+
+## write_rds(Dat_main, "D:/Alasdair/GIS data repository/uk-full-climvars-1961-2098-100s.rds")
+
+write_rds(Dat_main, project_data(path = "GIS-data/UK-climvars/uk-full-climvars-1961-2098-100s.rds"))
 
 # condense to annual tfac/wfac to minimise data read in/out when running model
 source("ipcc-c-model-functions.R")
@@ -297,7 +306,13 @@ Dat_main <- Dat_main %>%
                ungroup()
            }))
 
-write_rds(Dat_main %>% select(-clim_joined), "D:/Alasdair/GIS data repository/uk-annual-climvars-1961-2098-100s.rds")
+## write_rds(Dat_main %>% select(-clim_joined), "D:/Alasdair/GIS data repository/uk-annual-climvars-1961-2098-100s.rds")
+
+write_rds(Dat_main %>% select(-clim_joined), project_data(path = "GIS-data/UK-climvars/uk-annual-climvars-1961-2098-100s.rds"))
+
 
 # small sample (~17MB) to cloud for local analysis/script dev
-write_rds(Dat_main %>% select(-clim_joined) %>% filter(sample == 26), find_onedrive(dir = projdata_repo, path = "climate-data-processed-small-sample.rds"))
+
+## write_rds(Dat_main %>% select(-clim_joined) %>% filter(sample == 26), find_onedrive(dir = projdata_repo, path = "climate-data-processed-small-sample.rds"))
+
+write_rds(Dat_main %>% select(-clim_joined) %>% filter(sample == 26), project_data(path = "climate-data-processed-small-sample.rds"))

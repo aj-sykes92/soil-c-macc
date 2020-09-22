@@ -1,5 +1,8 @@
 
-Dat_wheat_ts <- read_csv(find_onedrive(dir = projdata_repo, path = "faostat-uk-wheat-prod-1961-2018.csv")) %>%
+library(dplyr)
+library(tidyverse)
+
+Dat_wheat_ts <- read_csv(project_data(path = "project-data/faostat-uk-wheat-prod-1961-2018.csv")) %>%
   select(key = Element, year = Year, value = Value) %>%
   spread(key = key, value = value) %>%
   rename(area_kha = `Area harvested`, yield_tha = Yield) %>%
@@ -75,10 +78,10 @@ Dat_wheat_full %>%
 
 # raster to check out current wheat yield spread
 # basically sense check linear increase as modelled above
-Ras_wheatyield <- raster(find_onedrive(dir = gisdata_repo, path = "MapSpam data/Yield/yield_wheat.tif"))
+Ras_wheatyield <- raster(project_data(path = "GIS-data/MapSpam data/Yield/yield_wheat.tif"))
 
 # masking shapefile
-Shp_UK <- find_onedrive(dir = gisdata_repo, path = "DA shapefile/GBR_adm_shp/GBR_adm1.shp") %>% shapefile()
+Shp_UK <- project_data(path = "GIS-data/DA shapefile/GBR_adm_shp/GBR_adm1.shp") %>% shapefile()
 
 Ras_wheatyield <- Ras_wheatyield %>% crop(Shp_UK) %>% mask(Shp_UK)
 

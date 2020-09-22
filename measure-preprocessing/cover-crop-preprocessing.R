@@ -2,18 +2,19 @@
 library(tidyverse)
 library(raster)
 
-gisdata_repo <- "GIS data repository"
-projdata_repo <- "Soils-R-GGREAT/UK Soil C MACC/project-data"
+## gisdata_repo <- "GIS data repository"
+## projdata_repo <- "Soils-R-GGREAT/UK Soil C MACC/project-data"
 
 # calculate fraction of wheat area suitable for cover cropping
-Ras_clay <- find_onedrive(dir = gisdata_repo, path = "SoilGrids250/CLYPPT_M_sl4_250m_ll.tif") %>% raster()
-Ras_wheatarea <- find_onedrive(dir = gisdata_repo, path = "MapSPAM data/Physical area/phys_area_wheat.tif") %>% raster()
-Shp_UK <- shapefile(find_onedrive(dir = gisdata_repo, path = "DA shapefile/GBR_adm_shp/GBR_adm1.shp"))
+
+Ras_clay <- project_data(path = "GIS-data/CLYPPT_M_sl4_250m_ll.tif") %>% raster()# 250m soil grids
+Ras_wheatarea <- project_data(path = "GIS-data/MapSPAM data/Physical area/phys_area_wheat.tif") %>% raster()
+Shp_UK <- shapefile(project_data(path = "GIS-data/DA shapefile/GBR_adm_shp/GBR_adm1.shp"))
 
 # raster for clay % @250m, uk mask
 #Ras_clay <- Ras_clay %>% crop(Shp_UK) %>% mask(Shp_UK)
 # write_rds(Ras_clay, find_onedrive(dir = projdata_repo, path = "clay-sl4-sg250-uk-mask.rds"))
-Ras_clay <- read_rds(find_onedrive(dir = projdata_repo, path = "clay-sl4-sg250-uk-mask.rds"))
+Ras_clay <- read_rds(project_data(path = "project-data/clay-sl4-sg250-uk-mask.rds"))
 
 # wheat area, UK mask
 Ras_wheatarea <- Ras_wheatarea %>% crop(Shp_UK) %>% mask(Shp_UK)

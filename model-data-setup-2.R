@@ -1,24 +1,27 @@
 library(raster)
 library(tidyverse)
 
-gisdata_repo <- "GIS data repository"
-projdata_repo <- "Soils-R-GGREAT/UK Soil C MACC/project-data"
+# Double ## Indicates code used by the author'script Dr. Alasdair Sykes to source his workpath
+
+## gisdata_repo <- "GIS data repository"
+## projdata_repo <- "Soils-R-GGREAT/UK Soil C MACC/project-data"
 
 # climate data nested df
 # small sample version for now so as not to hammer local CPU
-Dat_clim <- read_rds(find_onedrive(dir = projdata_repo, path = "climate-data-processed-small-sample.rds"))
+
+Dat_clim <- read_rds(project_data(path = "project-data/climate-data-processed-small-sample.rds"))
 
 # uk shapefile w/ DAs
-Shp_UK <- shapefile(find_onedrive(dir = gisdata_repo, path = "DA shapefile/GBR_adm_shp/GBR_adm1.shp"))
+Shp_UK <- shapefile(project_data(path = "GIS-data/DA shapefile/GBR_adm_shp/GBR_adm1.shp"))
 
 # sand % raster
-Ras_sand <- raster(find_onedrive(dir = gisdata_repo, path = "SoilGrids 5km/Sand content/Fixed/SNDPPT_M_sl4_5km_ll.tif")) %>%
+Ras_sand <- raster(project_data(path = "GIS-data/SoilGrids 5km/Sand content/Fixed/SNDPPT_M_sl4_5km_ll.tif")) %>%
   crop(Shp_UK) %>%
   mask(Shp_UK)
 
 # wheat area and yield bricks
-Brk_wheatarea <- read_rds(find_onedrive(dir = projdata_repo, path = "uk-wheat-area-spatial-ts.rds"))
-Brk_wheatyield <- read_rds(find_onedrive(dir = projdata_repo, path = "uk-wheat-yield-spatial-ts.rds"))
+Brk_wheatarea <- read_rds(project_data(path = "project-data/uk-wheat-area-spatial-ts.rds"))
+Brk_wheatyield <- read_rds(project_data(path = "project-data/uk-wheat-yield-spatial-ts.rds"))
 
 # convert to df and join
 # bind_rows much less intensive than joining by xy - checked for matching rows
@@ -36,7 +39,8 @@ Dat_wheat <- Dat_wheat %>%
   spread(key = metric, value = value)
 
 # calculate fractional residual sd for stochastic sim
-Dat_wheat_ts <- read_csv(find_onedrive(dir = projdata_repo, path = "faostat-uk-wheat-prod-1961-2018.csv")) %>%
+
+Dat_wheat_ts <- read_csv(project_data(path = "project-data/faostat-uk-wheat-prod-1961-2018.csv")) %>%
   select(key = Element, year = Year, value = Value) %>%
   spread(key = key, value = value) %>%
   rename(area_kha = `Area harvested`, yield_tha = Yield) %>%
@@ -161,4 +165,6 @@ Dat_main <- Dat_main %>%
   select(-crop_data, -clim_annual, -crop, -sand_frac)
 
 # write out
-write_rds(Dat_main, find_onedrive(dir = projdata_repo, path = "model-data-input-small-sample.rds"))
+
+## write_rds(Dat_main, find_onedrive(dir = projdata_repo, path = "model-data-input-small-sample.rds"))
+write_rds(Dat_main, project_data(path = "project-data/model-data-input-small-sample.rds"))

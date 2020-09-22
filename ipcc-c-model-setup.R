@@ -1,8 +1,8 @@
 
 library(tidyverse)
 
-gisdata_repo <- "GIS data repository"
-projdata_repo <- "Soils-R-GGREAT/UK Soil C MACC/project-data"
+## gisdata_repo <- "GIS data repository"
+## projdata_repo <- "Soils-R-GGREAT/UK Soil C MACC/project-data"
 
 #####################################################
 # get set up with data and functions
@@ -13,7 +13,8 @@ source("ipcc-c-model-functions.R")
 
 # read in model input data from [model-data-setup-2.R]
 # we'll use this as the basis for the model simulation
-Dat_model <- read_rds(find_onedrive(dir = projdata_repo, path = "model-data-input-small-sample.rds"))
+
+Dat_model <- read_rds(project_data(path = "project-data/model-data-input-small-sample.rds"))
 
 #####################################################
 # create and add manure application simulation for baseline practice
@@ -83,4 +84,4 @@ Dat_nest <- Dat_nest %>%
 #####################################################
 Dat_nest %>%
   select(sample, scenario_baseline) %>%
-  write_rds("model-scenarios/scenario-baseline.rds")
+  write_rds(project_data(path = "project-data/model-scenarios/scenario-baseline.rds"))

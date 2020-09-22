@@ -1,14 +1,14 @@
 library(tidyverse)
 
-gisdata_repo <- "GIS data repository"
-projdata_repo <- "Soils-R-GGREAT/UK Soil C MACC/project-data"
+## gisdata_repo <- "GIS data repository"
+## projdata_repo <- "Soils-R-GGREAT/UK Soil C MACC/project-data"
 
 # main dataset from model-data-setup-2.R
-Dat_nest <- read_rds(find_onedrive(dir = projdata_repo, path = "model-data-input-small-sample.rds"))
+Dat_nest <- read_rds(project_data(path = "project-data/model-data-input-small-sample.rds"))
 
 # manure background data
-Dat_manrate <- read_rds(find_onedrive(dir = projdata_repo, path = "manure-data/manure-app-rates.rds"))
-Dat_manab <- read_rds(find_onedrive(dir = projdata_repo, path = "manure-data/manure-rel-abundance-ts.rds"))
+Dat_manrate <- read_rds(project_data(path = "project-data/manure-data/manure-app-rates.rds"))
+Dat_manab <- read_rds(project_data(path = "project-data/manure-data/manure-rel-abundance-ts.rds"))
 
 # function to build basis for random selector (no sense repeating > once)
 build_man_selector <- function(crop){
@@ -57,6 +57,7 @@ run_season_selector <- function(n, seed){
 # run random selection over Dat_nest
 # assumes that manure dressing % stays constant and rates vary
 # assumes also that manure type/etc. is consistent over time period
+
 Dat_nest <- Dat_nest %>%
   mutate(growing_season = run_season_selector(n = nrow(Dat_nest), seed = 2605),
          man_type = run_man_selector(n = nrow(Dat_nest), season = growing_season, seed = 0212))
@@ -117,4 +118,7 @@ Dat_nest <- Dat_nest %>%
   select(-nrate_mean, -nrate_sd)
 
 # write out model data
-write_rds(Dat_nest, find_onedrive(dir = projdata_repo, path = "model-data-input-small-sample-wheat-manure-data.rds"))
+
+##write_rds(Dat_nest, find_onedrive(dir = projdata_repo, path = "model-data-input-small-sample-wheat-manure-data.rds"))
+
+write_rds(Dat_nest, project_data(path = "project-data/model-data-input-small-sample-wheat-manure-data.rds"))
