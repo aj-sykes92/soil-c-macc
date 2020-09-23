@@ -5,3 +5,6 @@
 
 # excel temporary files
 ~$*
+
+# r profile (to allow user-specific versions)
+.Rprofile
