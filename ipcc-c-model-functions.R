@@ -174,18 +174,16 @@ C_in_manure <- function(man_nrate, man_type){
 
 ###################
 # functions to calculate crop N and Lignin fractions from crop and manure parameter data
-## I do not understand what is hapening here, sorry!
-
-N_frac <- function(crop_type, manure_type, C_res, C_man){ # manure_type =? man_type
+N_frac <- function(crop_type, man_type, C_res, C_man){ # manure_type =? man_type
   lookup1 <- read_csv("parameter-data/crop-N-and-lignin-fractions.csv", na = c("", "NA"), col_type = "cnn") %>%
     filter(Crop == crop_type) %>%
     mutate(C_frac = 0.42)
   lookup2 <- read_csv("parameter-data/manure-coefficients.csv", na = c("", "NA"), col_type = "cnnn") %>%
-    filter(Livestock_type == manure_type) %>% ## man_type??
+    filter(Livestock_type == man_type) %>%
     mutate(C_frac = N_frac * CN_ratio)
   
   tot_res <- C_res / lookup1$C_frac
-  tot_man <- C_man / lookup2$C_frac
+  tot_man <- ifelse(C_man == 0, 0, C_man / lookup2$C_frac) # ifelse to prevent divide by zero error
   
   N_res <- tot_res * lookup1$N_frac
   N_man <- tot_man * lookup2$N_frac
