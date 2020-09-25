@@ -200,7 +200,7 @@ lignin_frac <- function(crop_type, manure_type, C_res, C_man){
     mutate(C_frac = N_frac * CN_ratio)
   
   tot_res <- C_res / lookup1$C_frac
-  tot_man <- C_man / lookup2$C_frac
+  tot_man <- ifelse(C_man == 0, 0, C_man / lookup2$C_frac) # ifelse to prevent divide by zero error
   
   lignin_res <- tot_res * lookup1$Lignin_frac 
   lignin_man <- tot_man * lookup2$Lignin_frac
