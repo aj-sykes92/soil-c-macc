@@ -1,12 +1,25 @@
 
 library(tidyverse)
+library(dplyr)
 
 Dat_nest <- read_rds(project_data(path = "project-data/model-data-input-small-sample-wheat-manure-data.rds"))
 
 
 ##########################
 # build and run model for bush estate farm
-build_model <- function(Dat_nest) {
+build_model <- function(Dat_nest){
+              Dat_nest <- Dat_nest %>% 
+              mutate(c_res = pmap_dbl(list(yield, crop_type, frac_renew, frac_remove), c_in_residues))%>%
+              left_join(by = "year") %>% 
+              mutate(c_man = pmap_dbl(list(man_nrate, man_type), C_in_manure),
+                     N_frac = pmap_dbl(list(crop_type, manure_type, c_res, c_man), N_frac),
+                     lignin_frac = pmap_dbl(list(crop_type , manure_type, C_res, C_man), lignin_frac),
+                     c_tot = c_res +c_man)
+              
+}          
+              
+view(Dat_nest)                
+                
 
   #####################################################
   # calculate crop-specific variables in the crop dataset
@@ -18,17 +31,17 @@ build_model <- function(Dat_nest) {
   
   # Dat_crop & Dat_manure were both used in app version -- here everything is tied up in Dat_nest already.
   
-  Dat_crop <- Dat_crop %>% # issue here -- Dat_crop not used
-    mutate(C_res = pmap_dbl(list(yield_tha, crop_type, frac_renew, frac_remove), # can we find these vars in Dat_nest?
-                            C_in_residues)) %>% # CHECK HOW THIS WORKS IN ipcc-model-functions.R
-    left_join(Dat_manure, by = "year") %>% # issue here -- Dat_manure not used
-    mutate(C_man = pmap_dbl(list(man_nrate, man_type), # can we find these vars in Dat_nest?
-                            C_in_manure), # CHECK HOW THIS WORKS IN ipcc-model-functions.R
-           N_frac = pmap_dbl(list(crop_type, man_type, C_res, C_man), # can we find these vars in Dat_nest?
-                             N_frac), # CHECK HOW THIS WORKS IN ipcc-model-functions.R
-           lignin_frac = pmap_dbl(list(crop_type, man_type, C_res, C_man), # can we find these vars in Dat_nest?
-                                  lignin_frac), # CHECK HOW THIS WORKS IN ipcc-model-functions.R
-           C_tot = C_res + C_man)
+  #Dat_crop <- Dat_crop %>% # issue here -- Dat_crop not used
+    #mutate(C_res = pmap_dbl(list(yield_tha, crop_type, frac_renew, frac_remove), # can we find these vars in Dat_nest?
+                           # C_in_residues)) %>% # CHECK HOW THIS WORKS IN ipcc-model-functions.R
+   # left_join(Dat_manure, by = "year") %>% # issue here -- Dat_manure not used
+    #mutate(C_man = pmap_dbl(list(man_nrate, man_type), # can we find these vars in Dat_nest?
+                            #C_in_manure), # CHECK HOW THIS WORKS IN ipcc-model-functions.R
+           #N_frac = pmap_dbl(list(crop_type, man_type, C_res, C_man), # can we find these vars in Dat_nest?
+                             #N_frac), # CHECK HOW THIS WORKS IN ipcc-model-functions.R
+           #lignin_frac = pmap_dbl(list(crop_type, man_type, C_res, C_man), # can we find these vars in Dat_nest?
+                                  #lignin_frac), # CHECK HOW THIS WORKS IN ipcc-model-functions.R
+           #C_tot = C_res + C_man)
   
   #####################################################
   # run in model for 20 year period and add tillage type
