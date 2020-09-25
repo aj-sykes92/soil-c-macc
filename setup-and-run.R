@@ -1,12 +1,12 @@
 
 library(tidyverse)
-library(dplyr)
+# library(dplyr) dplyr is automatically loaded w/ tidyverse!
 
 # read in data
 Dat_nest <- read_rds(project_data(path = "project-data/model-data-input-small-sample-wheat-manure-data.rds"))
 
 # source functions!
-source("ipcc-c-model-function.R")
+source("ipcc-c-model-functions.R")
 
 # sample down for ease of use
 set.seed(2605)
