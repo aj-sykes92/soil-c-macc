@@ -9,18 +9,15 @@ Dat_nest <- read_rds(project_data(path = "project-data/model-data-input-small-sa
 # build and run model for bush estate farm
 build_model <- function(Dat_nest){
               Dat_nest <- Dat_nest %>% 
-              mutate(c_res = pmap_dbl(list(yield, crop_type, frac_renew, frac_remove), c_in_residues))%>%
+              mutate(C_res = pmap_dbl(list(yield, crop_type, frac_renew, frac_remove), C_in_residues))%>%
               left_join(by = "year") %>% 
-              mutate(c_man = pmap_dbl(list(man_nrate, man_type), C_in_manure),
-                     N_frac = pmap_dbl(list(crop_type, manure_type, c_res, c_man), N_frac),
+              mutate(C_man = pmap_dbl(list(man_nrate, man_type), C_in_manure),
+                     N_frac = pmap_dbl(list(crop_type, manure_type, C_res, C_man), N_frac),
                      lignin_frac = pmap_dbl(list(crop_type , manure_type, C_res, C_man), lignin_frac),
-                     c_tot = c_res +c_man)
+                     C_tot = C_res +C_man)
               
-}          
               
-view(Dat_nest)                
                 
-
   #####################################################
   # calculate crop-specific variables in the crop dataset
   #####################################################
@@ -54,7 +51,7 @@ view(Dat_nest)
              map2(runin_years, run_in) %>% # CHECK HOW THIS WORKS IN ipcc-model-functions.R
              map(function(df){
                df %>%
-                 left_join(Dat_crop %>% select(year, till_type), by = "year") %>%
+                 left_join(Dat_nest %>% select(year, till_type), by = "year") %>%
                  mutate(till_type = ifelse(is.na(till_type), "full", till_type)) # CHECK THIS OUT -- ADD EARLIER IF POSSIBLE
              }))
   

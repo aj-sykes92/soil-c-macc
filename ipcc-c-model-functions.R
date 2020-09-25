@@ -2,6 +2,7 @@
 
 # load req'd packages
 library(tidyverse)
+library(dplyr)
 
 ##################
 # implement top-level function for C stock change 
@@ -31,7 +32,7 @@ f4 <- function(sand){
 }
 
 ##################
-# calculate f2 (variable depending on tillage)
+# calculate f2 (variable depending on tillage) ## stabilization efficiencies for str decay comp entering the active pool if til ==??
 f2 <- function(tillage){
   x <- match(tillage, c("unknown", "full", "reduced", "zero"))
   y <- c(pm$f2, pm$f2_ft, pm$f2_rt, pm$f2_nt)[x]
@@ -167,18 +168,20 @@ C_in_manure <- function(man_nrate, man_type){
   lookup1 <- read_csv("parameter-data/manure-coefficients.csv", na = c("", "NA"), col_type = "cnnn")
   
   CN <- lookup1 %>% filter(Livestock_type == man_type) %>% pull(CN_ratio)
-  C_in_manure <- CN * man_nrate * 10^-3 # manure C in tonnes ha-1
+  C_in_manure <- CN * man_nrate * 10^-3 # manure C in tonnes ha-1 # from where the model is taking man_nrate?
   return(C_in_manure)
 }
 
 ###################
 # functions to calculate crop N and Lignin fractions from crop and manure parameter data
-N_frac <- function(crop_type, manure_type, C_res, C_man){
+## I do not understand what is hapening here, sorry!
+
+N_frac <- function(crop_type, manure_type, C_res, C_man){ # manure_type =? man_type
   lookup1 <- read_csv("parameter-data/crop-N-and-lignin-fractions.csv", na = c("", "NA"), col_type = "cnn") %>%
     filter(Crop == crop_type) %>%
     mutate(C_frac = 0.42)
   lookup2 <- read_csv("parameter-data/manure-coefficients.csv", na = c("", "NA"), col_type = "cnnn") %>%
-    filter(Livestock_type == manure_type) %>%
+    filter(Livestock_type == manure_type) %>% ## man_type??
     mutate(C_frac = N_frac * CN_ratio)
   
   tot_res <- C_res / lookup1$C_frac
@@ -201,7 +204,7 @@ lignin_frac <- function(crop_type, manure_type, C_res, C_man){
   tot_res <- C_res / lookup1$C_frac
   tot_man <- C_man / lookup2$C_frac
   
-  lignin_res <- tot_res * lookup1$Lignin_frac
+  lignin_res <- tot_res * lookup1$Lignin_frac 
   lignin_man <- tot_man * lookup2$Lignin_frac
   
   return((lignin_res + lignin_man) / (tot_res + tot_man))
@@ -213,7 +216,7 @@ run_in <- function(df, years){
   df %>%
     arrange(year) %>% # make absolutely sure it's in chronological order
     slice(1:years) %>%
-    summarise_all(.funs = ifelse(is.numeric(.), mean, median)) %>% # CHECK THIS!!
+    summarise_all(.funs = ifelse(is.numeric(.), mean, median)) %>% # CHECK THIS!!, it can be used to calculate the mean and medina of categorical or factor var.
     mutate(year = NA) %>%
     bind_rows(df) %>%
     return()
