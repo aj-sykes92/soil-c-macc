@@ -270,107 +270,69 @@ run_model <- function(df){
            # roundup
            total_y = active_y + slow_y + passive_y,
            stock_change = SOC_stock_change(active_y, slow_y, passive_y)) %>%
-    select(alpha:stock_change)
+    select(year, yield_tha, alpha:stock_change)
 }
 
 ##########################
-# build and run model for bush estate farm
-build_model <- function(clim_data, crop_data, manure_data){
+# 'build model' -- calculate precursor data and run
+build_model <- function(Dat_nest){
   
-  # read in main climate data
-  # we'll use this as the basis for the model simulation
-  Dat_nest <- read_rds(clim_data)
-  
-  # yield data for bush estate's barley
-  
-  Dat_crop <- read_rds(project_data(path = "uk-wheat-yield-spatial-ts.rds"))
-  
-     # manure application for bush estate's barley
-  Dat_manure <- read_rds(project_data(path = "manure-app-rates.rds"))
-  
-  # sand percentage for soil at bush estate
-  sand_frac <- 0.47006 # sampled from sand % raster — no point reading in every time
-  
-  #####################################################
-  # starting with monthly climate variables, condensing to annual modification factors (tfac and wfac)
-  #####################################################
+  # calculate C in residues
   Dat_nest <- Dat_nest %>%
-    mutate(data_full = data_full %>%
-             map(function(df){
-               df %>%
-                 group_by(year) %>%
-                 summarise(wfac = wfac(precip = precip_mm, PET = pet_mm),
-                           tfac = tfac(temp = temp_centigrade)) %>%
-                 ungroup()
-             }))
+    mutate(
+      data = map2(data, crop_type, function(data, crop_type) {
+        data %>%
+          mutate(C_res = C_in_residues(yield_tha,
+                                       crop_type,
+                                       frac_renew,
+                                       frac_remove))
+      }))
   
-  #####################################################
-  # calculate crop-specific variables in the crop dataset
-  #####################################################
-  
-  # C inputs from crop residues and manure
-  Dat_crop <- Dat_crop %>%
-    mutate(C_res = pmap_dbl(list(yield_tha, crop_type, frac_renew, frac_remove),
-                            C_in_residues)) %>%
-    left_join(Dat_manure, by = "year") %>%
-    mutate(C_man = pmap_dbl(list(man_nrate, man_type),
-                            C_in_manure),
-           N_frac = pmap_dbl(list(crop_type, man_type, C_res, C_man),
-                             N_frac),
-           lignin_frac = pmap_dbl(list(crop_type, man_type, C_res, C_man),
-                                  lignin_frac),
-           C_tot = C_res + C_man)
-  rm(Dat_manure)
-  
-  #####################################################
-  # join crop-specific variables to main model data
-  #####################################################
-  # also adding in sand fraction data here since it's an odd one out
+  # calculate C in manure
   Dat_nest <- Dat_nest %>%
-    mutate(data_full = data_full %>%
-             map(function(df){
-               df %>%
-                 mutate(sand_frac = sand_frac) %>%
-                 left_join(Dat_crop %>%
-                             select(year, N_frac, lignin_frac, C_tot), by = "year")
-             }))
+    mutate(
+      data = map2(data, man_type, function(data, man_type) {
+        data %>%
+          mutate(C_man = C_in_manure(man_nrate,
+                                     man_type))
+      }))
   
-  #####################################################
-  # run in model for 20 year period and add tillage type
-  # can't run in with tillage already added, since it can't be averaged
-  #####################################################
-  runin_years <- 20
-  
+  # calculate N frac, lignin frac + total C
   Dat_nest <- Dat_nest %>%
-    mutate(data_runin = data_full %>%
-             map2(runin_years, run_in) %>%
-             map(function(df){
-               df %>%
-                 left_join(Dat_crop %>% select(year, till_type), by = "year") %>%
-                 mutate(till_type = ifelse(is.na(till_type), "full", till_type))
-             }))
+    mutate(
+      data = pmap(list(data, crop_type, man_type), function(data, crop_type, man_type) {
+        data %>%
+          mutate(N_frac = N_frac(crop_type,
+                                 man_type,
+                                 C_res,
+                                 C_man),
+                 lignin_frac = lignin_frac(crop_type,
+                                           man_type,
+                                           C_res,
+                                           C_man),
+                 C_tot = C_res + C_man
+          )
+      }))
   
-  #####################################################
-  # run model
-  #####################################################
+  # add a 20 year run in period to the model data
   Dat_nest <- Dat_nest %>%
-    mutate(scenario_baseline = data_runin %>%
-             map(run_model))
+    mutate(data_runin = map(data, ~run_in(.x, years = 20)))
+  
+  # run the model!
+  Dat_nest <- Dat_nest %>%
+    mutate(scenario_baseline = map(data_runin, run_model))
+  
   return(Dat_nest)
 }
 
 ###################
-# timeseries plot function
-ts_plot <- function(df_bl, df_mod){
-  baseline <- select(df_bl, "scenario_baseline")[[1, 2]] %>% filter(year == 2018) %>% pull(total_y)
-  #ylims <- df %>%
-  #  ungroup() %>%
-  #  unnest(cols = c(col)) %>%
-  #  filter(year >= 2018) %>%
-  #  pull(total_y) %>%
-  #  quantile(c(0.01, 0.99), na.rm = T) %>%
-  #  as.numeric()
+# model timeseries plot function
+ts_plot <- function(df_bl, df_mod = NULL, baseline_year = 2020){
   
+  # baseline soil carbon
+  baseline <- df_bl$scenario_baseline[[1]] %>% filter(year == baseline_year) %>% pull(total_y)
+  
+  # bind up dfs if 2nd is present
   df <- if(is.null(df_mod)){
     df_bl %>%
       mutate(scenario = "Baseline scenario")
@@ -378,12 +340,12 @@ ts_plot <- function(df_bl, df_mod){
     bind_rows(`Baseline scenario` = df_bl, `Modified scenario` = df_mod, .id = "scenario")
   }
   
+  # plot
   df %>%
     unnest(cols = c("scenario_baseline")) %>%
-    group_by(sample) %>%
-    mutate(year = ifelse(is.na(year), min(year, na.rm = T) - 1, year)) %>%
+    drop_na() %>%
     ggplot(aes(x = year, y = total_y, colour = scenario)) +
-    geom_line(aes(group = interaction(sample, scenario)), alpha = 0.05) +
+    geom_line(aes(group = interaction(sample, scenario, x, y)), alpha = 0.05) +
     geom_smooth(size = 0.5, method = "loess", se = F, span = 0.3) +
     geom_hline(yintercept = baseline, size = 0.5, colour = "black", lty = 2) +
     labs(x = "Year",
@@ -391,88 +353,7 @@ ts_plot <- function(df_bl, df_mod){
          colour = "",
          title = "") +
     scale_colour_manual(values = c("darkred", "darkgreen")) +
-    #ylim(ylims) +
-    #facet_wrap(~scenario, nrow = 1) +
     theme_classic()
-}
-
-stockchange_plot <- function(df_bl, df_mod){
-  df <- if(is.null(df_mod)){
-    df_bl %>%
-      mutate(scenario = "Baseline scenario")
-  } else {
-    bind_rows(`Baseline scenario` = df_bl, `Modified scenario` = df_mod, .id = "scenario")
-  }
-  
-  ylims <- df %>%
-    unnest(cols = c("scenario_baseline")) %>%
-    ungroup() %>%
-    filter(year >= 2019) %>%
-    pull(stock_change) %>%
-    quantile(c(0.05, 0.95), na.rm = T) %>%
-    as.numeric()
-    
-  df %>%
-    unnest(cols = c("scenario_baseline")) %>%
-    group_by(sample) %>%
-    filter(!is.na(year)) %>%
-    mutate(decade = (floor(year / 10) * 10) %>% as.ordered()) %>%
-    ggplot() +
-    geom_hline(yintercept = 0, size = 0.5, colour = "black", lty = 2) +
-    geom_boxplot(aes(x = decade, y = stock_change, fill = scenario), outlier.shape = NA, alpha = 0.5) +
-    ylim(ylims) +
-    labs(fill = "",
-         x = "Decade",
-         y = expression("C stock change (tonnes ha"^{-1}*" year"^{-1}*")"),
-         title = "") +
-    scale_fill_manual(values = c("darkred", "darkgreen")) +
-    theme_classic()
-}
-
-stockchange_table <- function(df_bl, df_mod){
-  
-  dur <- 2070 - 2019
-  
-  df <- if(is.null(df_mod)){
-    tibble(`Mean C stock change by 2070` = 0,
-           `Mean CO2 sequestration by 2070` = 0,
-           `Mean annual C stock change, 2020-2070` = 0,
-           `Mean annual CO2 sequestration, 2020-2070` = 0)
-  } else {
-    bind_rows(`Baseline scenario` = df_bl, `Modified scenario` = df_mod, .id = "scenario") %>%
-      unnest(cols = c("scenario_baseline")) %>%
-      group_by(sample) %>%
-      filter(year == 2070) %>%
-      group_by(scenario) %>%
-      summarise(C_stocks = mean(total_y)) %>%
-      spread(key = scenario, value = C_stocks) %>%
-      mutate(C_stock_diff = `Modified scenario` - `Baseline scenario`) %>%
-      summarise(`Mean C stock change by 2070` = mean(C_stock_diff),
-                `Mean CO2 sequestration by 2070` = `Mean C stock change by 2070` * 44/12,
-                `Mean annual C stock change, 2020-2070` = `Mean C stock change by 2070` / dur,
-                `Mean annual CO2 sequestration, 2020-2070` = `Mean annual C stock change, 2020-2070` * 44/12)
-  }
-  return(df)
-}
-
-build_output <- function(df_bl, df_mod){
-  
-  if(is.null(df_mod)){
-    return(NULL) 
-  } else {
-    df <- bind_rows(`Baseline scenario` = df_bl, `Modified scenario` = df_mod, .id = "scenario") %>%
-      unnest(cols = c("scenario_baseline")) %>%
-      group_by(sample) %>%
-      mutate(year = ifelse(is.na(year), min(year, na.rm = T) - 1, year)) %>%
-      group_by(scenario, year) %>%
-      summarise(`Active C pool, tonnes / ha` = mean(active_y),
-                `Slow C pool, tonnes / ha` = mean(slow_y),
-                `Passive C pool, tonnes / ha` = mean(passive_y),
-                `Total C stocks, tonnes / ha` = mean(total_y),
-                `C stock change, tonnes / ha / year` = mean(stock_change))
-    return(df)
-  }
-    
 }
 
 detach("package:tidyverse", unload = T)
