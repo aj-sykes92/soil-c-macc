@@ -117,8 +117,11 @@ Dat_nest <- Dat_nest %>%
   })) %>%
   select(-nrate_mean, -nrate_sd)
 
+# move crop type outside of nesting and combine with season
+Dat_nest <- Dat_nest %>%
+  mutate(crop_type = paste0(growing_season, "-wheat"),
+         data = data %>% map(~.x %>% select(-crop_type)))
+
 # write out model data
-
 ##write_rds(Dat_nest, find_onedrive(dir = projdata_repo, path = "model-data-input-small-sample-wheat-manure-data.rds"))
-
 write_rds(Dat_nest, project_data(path = "project-data/model-data-input-small-sample-wheat-manure-data.rds"))
