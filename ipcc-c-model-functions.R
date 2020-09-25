@@ -214,8 +214,9 @@ run_in <- function(df, years){
   df %>%
     arrange(year) %>% # make absolutely sure it's in chronological order
     slice(1:years) %>%
-    summarise_all(.funs = ifelse(is.numeric(.), mean, median)) %>% # CHECK THIS!!, it can be used to calculate the mean and medina of categorical or factor var.
-    mutate(year = NA) %>%
+    summarise_all(~ifelse(is.numeric(.), mean(., na.rm = T), DescTools::Mode(.))) %>%
+    mutate(origin = "run_in",
+           year = NA) %>%
     bind_rows(df) %>%
     return()
 }
