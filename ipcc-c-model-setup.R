@@ -84,4 +84,4 @@ Dat_nest <- Dat_nest %>%
 #####################################################
 Dat_nest %>%
   select(sample, scenario_baseline) %>%
-  write_rds(project_data(path = "project-data/model-scenarios/scenario-baseline.rds"))
+  write_rds(Dat_nest, project_data(path = "project-data/model-scenarios/scenario-baseline.rds"))

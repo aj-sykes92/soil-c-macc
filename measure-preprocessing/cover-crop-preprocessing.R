@@ -47,3 +47,4 @@ Dat_prob <- tibble(date = 1961:2097,
 ggplot() +
   geom_smooth(data = Dat_cc, aes(x = date, y = uptake_frac)) +
   geom_line(data = Dat_prob, aes(x = date, y = uptake_frac))
+

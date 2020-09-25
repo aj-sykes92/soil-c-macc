@@ -315,4 +315,4 @@ write_rds(Dat_main %>% select(-clim_joined), project_data(path = "GIS-data/UK-cl
 
 ## write_rds(Dat_main %>% select(-clim_joined) %>% filter(sample == 26), find_onedrive(dir = projdata_repo, path = "climate-data-processed-small-sample.rds"))
 
-write_rds(Dat_main %>% select(-clim_joined) %>% filter(sample == 26), project_data(path = "climate-data-processed-small-sample.rds"))
+write_rds(Dat_main %>% select(-clim_joined) %>% filter(sample == 26), project_data(path = "project-data/climate-data-processed-small-sample.rds"))

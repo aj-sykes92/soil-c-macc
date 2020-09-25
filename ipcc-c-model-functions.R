@@ -279,10 +279,11 @@ build_model <- function(clim_data, crop_data, manure_data){
   Dat_nest <- read_rds(clim_data)
   
   # yield data for bush estate's barley
-  Dat_crop <- read_csv(crop_data)
   
-  # manure application for bush estate's barley
-  Dat_manure <- read_csv(manure_data)
+  Dat_crop <- read_rds(project_data(path = "uk-wheat-yield-spatial-ts.rds"))
+  
+     # manure application for bush estate's barley
+  Dat_manure <- read_rds(project_data(path = "manure-app-rates.rds"))
   
   # sand percentage for soil at bush estate
   sand_frac <- 0.47006 # sampled from sand % raster — no point reading in every time

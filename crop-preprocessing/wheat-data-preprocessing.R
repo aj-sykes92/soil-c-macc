@@ -59,5 +59,6 @@ for(i in 1:nrow(Dat_wheat_ts)){
 }
 
 # write out raster bricks as .rds files
-write_rds(Brk_wheatyield, find_onedrive(dir = projdata_repo, path = "uk-wheat-yield-spatial-ts.rds"))
-write_rds(Brk_wheatarea, find_onedrive(dir = projdata_repo, path = "uk-wheat-area-spatial-ts.rds"))
+write_rds(Brk_wheatyield, project_data(path = "project-data/uk-wheat-yield-spatial-ts.rds"))
+write_rds(Brk_wheatarea, project_data(path = "project-data/uk-wheat-area-spatial-ts.rds"))
+
