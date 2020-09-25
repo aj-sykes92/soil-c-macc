@@ -269,7 +269,8 @@ run_model <- function(df){
            
            # roundup
            total_y = active_y + slow_y + passive_y,
-           stock_change = SOC_stock_change(active_y, slow_y, passive_y))
+           stock_change = SOC_stock_change(active_y, slow_y, passive_y)) %>%
+    select(alpha:stock_change)
 }
 
 ##########################
