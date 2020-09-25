@@ -213,7 +213,7 @@ run_in <- function(df, years){
   df %>%
     arrange(year) %>% # make absolutely sure it's in chronological order
     slice(1:years) %>%
-    summarise_all(.funs = ifelse(is.numeric(.), mean, median)) %>%
+    summarise_all(.funs = ifelse(is.numeric(.), mean, median)) %>% # CHECK THIS!!
     mutate(year = NA) %>%
     bind_rows(df) %>%
     return()
