@@ -1,13 +1,13 @@
-Crop,Crop_type,CN_ratio,N_frac,Lignin_frac
-oats,cereal,70,0.007,0.047
-rye,cereal,37,0.008,0.050
-barley,cereal,,0.009,0.046
-radish,brassica,,,
-turnips,brassica,,,
-mustard,brassica,,,
-beans and pulses,pulses,,0.008,0.075
-vetch,legume,11,,
-clover,legume,,,
-alfalfa,legume,25,0.024,0.072
-grass,grass,,0.013,0.049
-grass-legume-mix,mixed,,0.018,0.061
+Crop,Crop_type,CN_ratio,N_frac,Lignin_frac,Source
+oats,cereal,70,0.0073,0.047,https://www.ipcc-nggip.iges.or.jp/public/2019rf/pdf/4_Volume4/19R_V4_Ch05_Cropland.pdf
+rye,cereal,37,0.0080,0.050,
+barley,cereal,,0.0090,0.046,
+radish,brassica,,,,
+turnips,brassica,,,,
+mustard,brassica,,,,
+beans and pulses,pulses,,0.0080,0.075,
+vetch,legume,11,0.0250,0.072,
+clover,legume,,0.0250,0.072,
+alfalfa,legume,25,0.0238,0.072,
+grass,grass,,0.0130,0.049,
+grass-legume-mix,mixed,,0.0180,0.061,
