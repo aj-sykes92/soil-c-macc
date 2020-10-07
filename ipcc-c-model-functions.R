@@ -144,11 +144,15 @@ passive_y <- function(k_p, passive_y_ss){
 
 ###################
 # function to calculate C inputs from crop residues (tonnes C per hectare)
-C_in_residues <- function(yield, crop_type, cover_crop, frac_renew, frac_remove){
+C_in_residues <- function(yield, crop_type, frac_renew, frac_remove, cover_crop = FALSE){
   
-  if(cover_crop == FALSE){
+  if(cover_crop == FALSE) {
     lookup1 <- read_csv("parameter-data/below-ground-residue-coefficients.csv", na = c("", "NA"), col_types = "cnnn")
     lookup2 <- read_csv("parameter-data/above-ground-residue-coefficients.csv", na = c("", "NA"), col_types = "cnnnnn")
+  } else {
+    lookup1 <- read_csv("parameter-data/cc-below-ground-coefficients.csv", na = c("", "NA", col_types = "cnnn"))
+    lookup2 <- read_csv("parameter-data/cc-above-ground-coefficients.csv", na = c("", "NA", col_types = "cnnnnn"))
+  }
     
     RS <- lookup1 %>% filter(Crop == crop_type) %>% pull(RS)
     DRY <- lookup1 %>% filter(Crop == crop_type) %>% pull(DRY)
@@ -161,25 +165,8 @@ C_in_residues <- function(yield, crop_type, cover_crop, frac_renew, frac_remove)
     agr <- agdm * frac_renew * (1 - frac_remove)
     
     C_in_residues <- agr * 0.42 + bgr * 0.42 # 42% C assumption
-    return(C_in_residues)}
-  
-  if(cover_crop == TRUE){
-    lookup3 <- read_csv("parameter-data/cc-below-ground-coefficients.csv", na = c("", "NA", col_types = "cnnn"))
-    lookup4 <- read_csv("parameter-data/cc-above-ground-coefficients.csv", na = c("", "NA", col_types = "cnnnnn"))
     
-    RS <- lookup3 %>% filter(Crop == cover_crop) %>% pull(RS)
-    DRY <- lookup3 %>% filter(Crop == cover_crop) %>% pull(DRY)
-    Slope <- lookup4 %>% filter(Crop == cover_crop) %>% pull(Slope)
-    Intercept <- lookup4 %>% filter(Crop == cover_crop) %>% pull(Intercept)
-    
-    yield_dry <- yield * DRY
-    agdm <- yield_dry * Slope + Intercept
-    cc_bgr <- yield_dry * agdm * RS * frac_renew 
-    cc_agr <- agdm * frac_renew * (1 - frac_remove)
-    
-    C_in_residues <- sum(agr, cc_agr, NA, na.rm = TRUE) * 0.42 + sum(bgr, cc_bgr, NA, na.rm = TRUE) * 0.42
-    return(C_in_residues)}
-  
+    return(C_in_residues)
 }
 
 ###################
