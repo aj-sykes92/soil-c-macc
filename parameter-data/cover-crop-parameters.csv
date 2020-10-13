@@ -1,13 +1,14 @@
-Crop,Crop_type,CN_ratio,N_frac,Lignin_frac,Source
-oats,cereal,70,0.0073,0.047,https://www.ipcc-nggip.iges.or.jp/public/2019rf/pdf/4_Volume4/19R_V4_Ch05_Cropland.pdf
-rye,cereal,37,0.0080,0.050,
-barley,cereal,,0.0090,0.046,
-radish,brassica,,,,
-turnips,brassica,,,,
-mustard,brassica,,,,
-beans and pulses,pulses,,0.0080,0.075,
-vetch,legume,11,0.0250,0.072,
-clover,legume,,0.0250,0.072,
-alfalfa,legume,25,0.0238,0.072,
-grass,grass,,0.0130,0.049,
-grass-legume-mix,mixed,,0.0180,0.061,
+Crop,Crop_type,CN_ratio,N_frac,Lignin_frac,Note,Source
+alfalfa,legume,25.00,0.024,0.072,mature alfalfa hay,https://www.ipcc-nggip.iges.or.jp/public/2019rf/pdf/4_Volume4/19R_V4_Ch05_Cropland.pdf
+barley,cereal,125.00,0.009,0.046,,"Brust et al 2019, https://www.sciencedirect.com/science/article/pii/B978012812060600009X#f0010"
+beans-and-pulses,legume,17.00,0.008,0.075,,https://advancecovercrops.com/resources-advanced-cover-crops/carbon-nitrogen-ratio/
+clover,legume,10.00,0.025,0.072,,https://www.nrcs.usda.gov/Internet/FSE_DOCUMENTS/nrcseprd331820.pdf
+grass,grass,15.00,0.013,0.049,,
+grass-clover-mix,grass-legume,,0.018,0.061,,
+mustard,brassica,25.00,0.013,0.049,,https://energypedia.info/wiki/Nitrogen-content_and_C/N-ratio_of_Organic_Substrates
+oats,cereal,70.00,0.007,0.047,,
+phacelia,broadleaf,,0.013,0.049,,
+radish,brassica,20.00,0.017,0.073,,https://projects.sare.org/sare_project/gnc13-168/
+rye-straw,cereal,82.00,0.008,0.050,"flowering (37), vegetative(26)",
+turnips,brassica,20.00,0.017,0.073,,
+vetch,legume,11.00,0.025,0.072,,

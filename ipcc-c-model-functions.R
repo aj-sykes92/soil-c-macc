@@ -175,13 +175,13 @@ C_in_manure <- function(man_nrate, man_type){
   lookup1 <- read_csv("parameter-data/manure-coefficients.csv", na = c("", "NA"), col_type = "cnnn")
   
   CN <- lookup1 %>% filter(Livestock_type == man_type) %>% pull(CN_ratio)
-  C_in_manure <- CN * man_nrate * 10^-3 # manure C in tonnes ha-1 # from where the model is taking man_nrate?
+  C_in_manure <- CN * man_nrate * 10^-3 # manure C in tonnes ha-1 
   return(C_in_manure)
 }
 
 ###################
 # functions to calculate crop N and Lignin fractions from crop and manure parameter data
-N_frac <- function(crop_type, man_type, C_res, C_man){ # manure_type =? man_type
+N_frac <- function(crop_type, man_type, C_res, C_man){ 
   lookup1 <- read_csv("parameter-data/crop-N-and-lignin-fractions.csv", na = c("", "NA"), col_type = "cnn") %>%
     filter(Crop == crop_type) %>%
     mutate(C_frac = 0.42)
@@ -296,6 +296,16 @@ build_model <- function(Dat_nest){
       }))
   
   # ADD COVER CROP FUNCTION IN HERE (SIMILAR FORMAT TO MAIN CROP ABOVE)
+  Dat_nest <-Dat_nest %>% 
+    mutate(
+      data = map2(data, cover_crop, function(data, cover_crop) {
+        data %>% 
+          mutate(C_res = C_in_residues(yield_tha,
+                                       cover_crop,
+                                       frac_renew,
+                                       frac_remove)) # frac_remove in funcion of the cover crop
+        
+      }))
   
   # calculate C in manure
   Dat_nest <- Dat_nest %>%
@@ -366,3 +376,4 @@ ts_plot <- function(df_bl, df_mod = NULL, baseline_year = 2020){
 }
 
 detach("package:tidyverse", unload = T)
+

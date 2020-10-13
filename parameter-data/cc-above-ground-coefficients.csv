@@ -1,2 +1,14 @@
-﻿Crop,Slope,Slope_bw,Intercept,Intercept_bw,R_squared
-barley,0.98,0.08,0.59,0.41,0.68
+﻿Crop,Crop_type,Slope,Slope_bw,Intercept,Intercept_bw,R_squared,Source
+alfalfa,legume,0.29,0.31,0,0,0,
+barley,cereal,0.98,0.08,0.59,0.41,0.68,
+beans-and-pulses,legume,1.13,0.19,0.85,0.56,0.28,
+clover,legume,0.3,0.5,0,0,0,
+grass,grass,0.3,0.5,0,0,0,
+grass-clover,grass-legume,0.3,0.5,0,0,0,
+mustard,brassica,0.1,0.69,1.06,0.7,0.18,
+oats,cereal,0.91,0.05,0.89,0.08,0.45,
+phacelia,broadleaf,0.3,0.5,0,0,0,
+radish,brassica,0.1,0.69,1.06,0.7,0.18,
+rye,cereal,1.09,0.5,0.88,0.5,0,
+turnips,brassica,0.1,0.69,1.06,0.7,0.18,
+vetch,legume,0.3,0.5,0,0,0,

@@ -3,7 +3,7 @@ library(tidyverse)
 # library(dplyr) dplyr is automatically loaded w/ tidyverse!
 
 # read in data
-Dat_nest <- read_rds(project_data(path = "project-data/model-data-input-small-sample-wheat-manure-data.rds"))
+Dat_nest <- read_rds(project_data(path = "project-data/model-data-input-small-sample-wheat-manure-tillage-data.rds"))
 
 # source functions!
 source("ipcc-c-model-functions.R")
@@ -15,8 +15,7 @@ Dat_nest <- Dat_nest %>% sample_n(50)
 # add in dummy assumptions
 Dat_nest <- Dat_nest %>%
   mutate(data =  map(data, ~.x %>% mutate(frac_renew = 1,
-                                          frac_remove = 0.7,
-                                          till_type = "full")))
+                                          till_type = "zero")))
 
 # build and run model
 Dat_nest <- build_model(Dat_nest)
