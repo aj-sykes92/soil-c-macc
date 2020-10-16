@@ -1,0 +1,4 @@
+Tillage_type,Proportion_cc_min,Proportion_cc_max
+Conventional,0.4,0.54
+Reduced,0.7,0.86
+Zero,0.95,0.95

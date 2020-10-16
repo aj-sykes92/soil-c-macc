@@ -50,7 +50,7 @@ ggplot() +
 
 # Cover crop function
 
-Cover_crop <- function(cc_type, cc_species, soil_class){
+Cover_crop <- function(cc_species, cc_type){
   
   
 }

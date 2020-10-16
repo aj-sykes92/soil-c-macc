@@ -1,8 +1,8 @@
-﻿Species_cc,Type_cc,RS,RS_bw,DRY
-buckwheat,broadleaf,0.54,0.5,0.9
-crimsom-clover,legume,0.4,0.5,0.9
-spring-oats,cereal,0.25,1.2,0.89
-phacelia,broadleaf,0.54,0.5,0.9
-oil-radish,brassica,0.2,0.5,0.22
-cereal-rye,cereal,0.22,0.33,0.89
-vetch,legume,0.4,0.5,0.9
+﻿Species_cc,Type_cc,Group,RS,RS_bw,DRY
+buckwheat,broadleaf,1,0.54,0.5,0.9
+crimsom-clover,legume,2,0.4,0.5,0.9
+spring-oats,cereal,3,0.25,1.2,0.89
+phacelia,broadleaf,4,0.54,0.5,0.9
+oil-radish,brassica,5,0.2,0.5,0.22
+cereal-rye,cereal,3,0.22,0.33,0.89
+vetch,legume,2,0.4,0.5,0.9

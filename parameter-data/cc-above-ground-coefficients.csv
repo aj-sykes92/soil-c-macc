@@ -1,8 +1,8 @@
-﻿Species_cc,Type_cc,Slope,Slope_bw,Intercept,Intercept_bw,R_squared,Source
-buckwheat,broadleaf,0.30,0.50,0.00,0.00,0.00,
-crimsom-clover,legume,0.30,0.50,0.00,0.00,0.00,
-spring-oats,cereal,0.91,0.05,0.89,0.08,0.45,
-phacelia,broadleaf,0.30,0.50,0.00,0.00,0.00,
-oil-radish,brassica,0.10,0.69,1.06,0.70,0.18,
-cereal-rye,cereal,1.09,0.50,0.88,0.50,0.00,
-vetch,legume,0.30,0.50,0.00,0.00,0.00,
+﻿Species_cc,Type_cc,Group,Slope,Slope_bw,Intercept,Intercept_bw,R_squared,Source
+buckwheat,broadleaf,1,0.3,0.5,0,0,0,
+crimsom-clover,legume,2,0.3,0.5,0,0,0,
+spring-oats,cereal,3,0.91,0.05,0.89,0.08,0.45,
+phacelia,broadleaf,4,0.3,0.5,0,0,0,
+oil-radish,brassica,5,0.1,0.69,1.06,0.7,0.18,
+cereal-rye,cereal,3,1.09,0.5,0.88,0.5,0,
+vetch,legume,2,0.3,0.5,0,0,0,
