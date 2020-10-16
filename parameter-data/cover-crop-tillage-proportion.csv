@@ -1,4 +1,4 @@
-Tillage_type,Proportion_cc_min,Proportion_cc_max,,Source,
-Conventional,0.4,0.54,,"Storr et al.,2019",https://onlinelibrary.wiley.com/doi/full/10.1111/aab.12488
-Reduced,0.7,0.86,,,
-Zero,0.95,0.95,,,
+Tillage_type,Proportion_cc_min,Proportion_cc_max
+Conventional,0.4,0.54
+Reduced,0.7,0.86
+Zero,0.95,0.95
