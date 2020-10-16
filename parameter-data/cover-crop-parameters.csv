@@ -1,14 +1,8 @@
-Crop,Crop_type,CN_ratio,N_frac,Lignin_frac,Note,Source
-alfalfa,legume,25.00,0.024,0.072,mature alfalfa hay,https://www.ipcc-nggip.iges.or.jp/public/2019rf/pdf/4_Volume4/19R_V4_Ch05_Cropland.pdf
-barley,cereal,125.00,0.009,0.046,,"Brust et al 2019, https://www.sciencedirect.com/science/article/pii/B978012812060600009X#f0010"
-beans-and-pulses,legume,17.00,0.008,0.075,,https://advancecovercrops.com/resources-advanced-cover-crops/carbon-nitrogen-ratio/
-clover,legume,10.00,0.025,0.072,,https://www.nrcs.usda.gov/Internet/FSE_DOCUMENTS/nrcseprd331820.pdf
-grass,grass,15.00,0.013,0.049,,
-grass-clover-mix,grass-legume,,0.018,0.061,,
-mustard,brassica,25.00,0.013,0.049,,https://energypedia.info/wiki/Nitrogen-content_and_C/N-ratio_of_Organic_Substrates
-oats,cereal,70.00,0.007,0.047,,
-phacelia,broadleaf,,0.013,0.049,,
-radish,brassica,20.00,0.017,0.073,,https://projects.sare.org/sare_project/gnc13-168/
-rye-straw,cereal,82.00,0.008,0.050,"flowering (37), vegetative(26)",
-turnips,brassica,20.00,0.017,0.073,,
-vetch,legume,11.00,0.025,0.072,,
+Species_cc,Type_cc,Mean_yield_t_ha_-1,SED,CN_ratio,N_frac,Lignin_frac,Note,Source
+buckwheat,broadleaf,0.8,0.48,15,0.01,0.05,to be refined,https://www.ipcc-nggip.iges.or.jp/public/2019rf/pdf/4_Volume4/19R_V4_Ch05_Cropland.pdf
+crimsom-clover,legume,1.8,0.48,10,0.03,0.07,,https://www.nrcs.usda.gov/Internet/FSE_DOCUMENTS/nrcseprd331820.pdf
+spring-oats,cereal,1.52,0.48,26,0.01,0.05,vegetative/to be refined,https://energypedia.info/wiki/Nitrogen-content_and_C/N-ratio_of_Organic_Substrates
+phacelia,broadleaf,1.6,0.48,15,0.01,0.05,to be refined,https://projects.sare.org/sare_project/gnc13-168/
+oil-radish,brassica,1.25,0.48,20,0.02,0.07,,https://projectblue.blob.core.windows.net/media/Default/Research%20Papers/Cereals%20and%20Oilseed/2020/PR620%20Final%20Project%20Report.pdf
+cereal-rye,cereal,2,0.48,26,0.01,0.05,vegetative,
+vetch,legume,1.6,0.48,11,0.03,0.07,,
