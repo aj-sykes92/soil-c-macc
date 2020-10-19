@@ -183,6 +183,14 @@ Dat_nest <- Dat_nest %>%
                mutate(frac_remove = runif(nrow(data), min = 0.5, max = 0.666))
            }))
 
+# fraction of crop renewed -- wheat is annual
+Dat_nest <- Dat_nest %>%
+  mutate(data = data %>%
+           map(function(data) {
+             data %>%
+               mutate(frac_renew = 1)
+           }))
+
 # save new df
 write_rds(Dat_nest, project_data("project-data/model-data-input-small-sample-wheat-manure-tillage-data.rds"))
   

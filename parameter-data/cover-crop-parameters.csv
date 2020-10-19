@@ -1,8 +1,8 @@
-Species_cc,Type_cc,Group,Mean_yield_t_ha_-1,SED,CN_ratio,N_frac,Lignin_frac,Note,Source
-buckwheat,broadleaf,1,0.8,0.48,15,0.01,0.05,to be refined,https://www.ipcc-nggip.iges.or.jp/public/2019rf/pdf/4_Volume4/19R_V4_Ch05_Cropland.pdf
-crimsom-clover,legume,2,1.8,0.48,10,0.03,0.07,,https://www.nrcs.usda.gov/Internet/FSE_DOCUMENTS/nrcseprd331820.pdf
-spring-oats,cereal,3,1.52,0.48,26,0.01,0.05,vegetative/to be refined,https://energypedia.info/wiki/Nitrogen-content_and_C/N-ratio_of_Organic_Substrates
-phacelia,broadleaf,4,1.6,0.48,15,0.01,0.05,to be refined,https://projects.sare.org/sare_project/gnc13-168/
-oil-radish,brassica,5,1.25,0.48,20,0.02,0.07,,https://projectblue.blob.core.windows.net/media/Default/Research%20Papers/Cereals%20and%20Oilseed/2020/PR620%20Final%20Project%20Report.pdf
-cereal-rye,cereal,3,2,0.48,26,0.01,0.05,vegetative,
-vetch,legume,2,1.6,0.48,11,0.03,0.07,,
+Species_cc,Type_cc,Group,Mean_yield_t_ha,SED,CN_ratio,N_frac,Lignin_frac,RS,RS_bw,DRY,Note,Source
+buckwheat,broadleaf,1,0.8,0.48,15,0.01,0.05,0.54,0.5,0.9,to be refined,https://www.ipcc-nggip.iges.or.jp/public/2019rf/pdf/4_Volume4/19R_V4_Ch05_Cropland.pdf
+crimsom-clover,legume,2,1.8,0.48,10,0.03,0.07,0.4,0.5,0.9,,https://www.nrcs.usda.gov/Internet/FSE_DOCUMENTS/nrcseprd331820.pdf
+spring-oats,cereal,3,1.52,0.48,26,0.01,0.05,0.25,1.2,0.89,vegetative/to be refined,https://energypedia.info/wiki/Nitrogen-content_and_C/N-ratio_of_Organic_Substrates
+phacelia,broadleaf,4,1.6,0.48,15,0.01,0.05,0.54,0.5,0.9,to be refined,https://projects.sare.org/sare_project/gnc13-168/
+oil-radish,brassica,5,1.25,0.48,20,0.02,0.07,0.2,0.5,0.22,,https://projectblue.blob.core.windows.net/media/Default/Research%20Papers/Cereals%20and%20Oilseed/2020/PR620%20Final%20Project%20Report.pdf
+cereal-rye,cereal,3,2,0.48,26,0.01,0.05,0.22,0.33,0.89,vegetative,
+vetch,legume,2,1.6,0.48,11,0.03,0.07,0.4,0.5,0.9,,

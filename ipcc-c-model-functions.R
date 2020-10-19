@@ -144,24 +144,16 @@ passive_y <- function(k_p, passive_y_ss){
 
 ###################
 # function to calculate C inputs from crop residues (tonnes C per hectare)
-C_in_residues <- function(yield, crop_type, frac_renew, frac_remove, cover_crop = FALSE){
-  
-  if(cover_crop == FALSE) {
-    lookup1 <- read_csv("parameter-data/below-ground-residue-coefficients.csv", na = c("", "NA"), col_types = "cnnn")
-    lookup2 <- read_csv("parameter-data/above-ground-residue-coefficients.csv", na = c("", "NA"), col_types = "cnnnnn")
-  } else {
-    lookup1 <- read_csv("parameter-data/cc-below-ground-coefficients.csv", na = c("", "NA", col_types = "cnnn"))
-    lookup2 <- read_csv("parameter-data/cc-above-ground-coefficients.csv", na = c("", "NA", col_types = "cnnnnn"))
-  }
-  
-  RS <- lookup1 %>% filter(Crop == crop_type) %>% pull(RS)
-  DRY <- lookup1 %>% filter(Crop == crop_type) %>% pull(DRY)
-  Slope <- lookup2 %>% filter(Crop == crop_type) %>% pull(Slope)
-  Intercept <- lookup2 %>% filter(Crop == crop_type) %>% pull(Intercept)
+C_in_residues <- function(yield, crop_type, frac_renew, frac_remove, crop_agr_coeffs, crop_bgr_coeffs) {
+
+  RS <- crop_bgr_coeffs %>% filter(Crop == crop_type) %>% pull(RS)
+  DRY <- crop_bgr_coeffs %>% filter(Crop == crop_type) %>% pull(DRY)
+  Slope <- crop_agr_coeffs %>% filter(Crop == crop_type) %>% pull(Slope)
+  Intercept <- crop_agr_coeffs %>% filter(Crop == crop_type) %>% pull(Intercept)
   
   yield_dry <- yield * DRY
   agdm <- yield_dry * Slope + Intercept
-  bgr <- yield_dry * agdm * RS * frac_renew # note this line is different to IPCC (2019) -- presumed error in calculations (addition of +1 term to agdm, which makes no sense)
+  bgr <- (yield_dry + agdm) * RS * frac_renew # note this line is from IPCC (2019) Eq 11.6 --- presumed error in equivalent eq. 5.0H
   agr <- agdm * frac_renew * (1 - frac_remove)
   
   C_in_residues <- agr * 0.42 + bgr * 0.42 # 42% C assumption
@@ -171,21 +163,21 @@ C_in_residues <- function(yield, crop_type, frac_renew, frac_remove, cover_crop 
 
 ###################
 # function to calculate C inputs from manure (tonnes C per hectare)
-C_in_manure <- function(man_nrate, man_type){
-  lookup1 <- read_csv("parameter-data/manure-coefficients.csv", na = c("", "NA"), col_type = "cnnn")
-  
-  CN <- lookup1 %>% filter(Livestock_type == man_type) %>% pull(CN_ratio)
+C_in_manure <- function(man_nrate, man_type, man_params) {
+  CN <- man_params %>% filter(Livestock_type == man_type) %>% pull(CN_ratio)
   C_in_manure <- CN * man_nrate * 10^-3 # manure C in tonnes ha-1 
   return(C_in_manure)
 }
 
 ###################
 # functions to calculate crop N and Lignin fractions from crop and manure parameter data
-N_frac <- function(crop_type, man_type, C_res, C_man){ 
-  lookup1 <- read_csv("parameter-data/crop-N-and-lignin-fractions.csv", na = c("", "NA"), col_type = "cnn") %>%
+N_frac <- function(crop_type, man_type, C_res, C_man, cc_dm_tha, cc_N_res, crop_params, man_params) { 
+  
+  lookup1 <- crop_params %>%
     filter(Crop == crop_type) %>%
     mutate(C_frac = 0.42)
-  lookup2 <- read_csv("parameter-data/manure-coefficients.csv", na = c("", "NA"), col_type = "cnnn") %>%
+  
+  lookup2 <- man_params %>%
     filter(Livestock_type == man_type) %>%
     mutate(C_frac = N_frac * CN_ratio)
   
@@ -195,14 +187,14 @@ N_frac <- function(crop_type, man_type, C_res, C_man){
   N_res <- tot_res * lookup1$N_frac
   N_man <- tot_man * lookup2$N_frac
   
-  return((N_res + N_man) / (tot_res + tot_man))
+  return((N_res + N_man + cc_N_res) / (tot_res + tot_man + cc_dm_tha))
 }
 
-lignin_frac <- function(crop_type, manure_type, C_res, C_man){
-  lookup1 <- read_csv("parameter-data/crop-N-and-lignin-fractions.csv", na = c("", "NA"), col_type = "cnn") %>%
+lignin_frac <- function(crop_type, manure_type, C_res, C_man, cc_dm_tha, cc_lignin_res, crop_params, man_params) {
+  lookup1 <- crop_params %>%
     filter(Crop == crop_type) %>%
     mutate(C_frac = 0.42)
-  lookup2 <- read_csv("parameter-data/manure-coefficients.csv", na = c("", "NA"), col_type = "cnnn") %>%
+  lookup2 <- man_params %>%
     filter(Livestock_type == manure_type) %>%
     mutate(C_frac = N_frac * CN_ratio)
   
@@ -212,7 +204,69 @@ lignin_frac <- function(crop_type, manure_type, C_res, C_man){
   lignin_res <- tot_res * lookup1$Lignin_frac 
   lignin_man <- tot_man * lookup2$Lignin_frac
   
-  return((lignin_res + lignin_man) / (tot_res + tot_man))
+  return((lignin_res + lignin_man + cc_lignin_res) / (tot_res + tot_man + cc_dm_tha))
+}
+
+###################
+# cover crop functions
+
+# has cover crop in cell/year?
+has_cc <- function(data, cc_probs) {
+  data %>%
+    left_join(cc_probs, by = "till_type") %>%
+    mutate(cc_threshold = runif(n = nrow(data), min = frac_cc_min, max = frac_cc_max),
+           has_cc = runif(n = nrow(data)) <= cc_threshold) %>%
+    select(-frac_cc_min, -frac_cc_max, -cc_threshold)
+}
+
+# get cover crop data
+get_cover_crop_data <- function(data, cc_params, cc_bgr_coeffs, combi_min = 2, combi_max = 4) {
+  
+  # group size and combination
+  combi_n <- sample(combi_min:combi_max, 1)
+  combi_groups <- sample(1:max(cc_params$Group), combi_n, replace = F)
+  
+  combi_mix <- cc_params %>%
+    filter(Group %in% combi_groups) %>%
+    group_by(Group) %>%
+    sample_n(1) %>%
+    ungroup()
+  
+  # mix ratios
+  ratio <- runif(n = combi_n)
+  ratio = ratio / sum(ratio)
+  
+  # output
+  combi_mix <- combi_mix %>%
+    summarise(has_cc = TRUE,
+              cc_yield_tha = sum(Mean_yield_t_ha * ratio),
+              cc_CN_ratio = sum(CN_ratio * ratio),
+              cc_N_frac = sum(N_frac * ratio),
+              cc_lignin_frac = sum(Lignin_frac * ratio),
+              cc_RS = sum(RS * ratio),
+              cc_DRY = sum(DRY * ratio)) %>%
+    mutate(cc_agr_bio = cc_yield_tha * cc_DRY,
+           cc_bgr_bio = cc_agr_bio * cc_RS,
+           cc_dm_tha = cc_agr_bio + cc_bgr_bio,
+           cc_N_res = cc_dm_tha * cc_N_frac,
+           cc_C_res = cc_N_res * cc_CN_ratio,
+           cc_lignin_res = cc_dm_tha * cc_lignin_frac) %>%
+    select(has_cc, cc_dm_tha:cc_lignin_res)
+  
+  # zero option for has_cc == F
+  combi_mix <- bind_rows(combi_mix,
+                         tibble(has_cc = FALSE,
+                                cc_dm_tha = 0,
+                                cc_N_res = 0,
+                                cc_C_res = 0,
+                                cc_lignin_res = 0)
+  )
+  
+  # add to Dat_nest
+  data <- data %>%
+    left_join(combi_mix, by = "has_cc")
+  
+  return(data)
 }
 
 ###################
@@ -277,43 +331,48 @@ run_model <- function(df){
            # roundup
            total_y = active_y + slow_y + passive_y,
            stock_change = SOC_stock_change(active_y, slow_y, passive_y)) %>%
-    select(year, yield_tha, alpha:stock_change)
+    select(year, yield_tha, C_tot, alpha:stock_change)
 }
 
 ##########################
 # 'build model' -- calculate precursor data and run
-build_model <- function(Dat_nest){
+build_model <- function(Dat_nest) {
+  
+  # crop residue method lookups
+  crop_bgr_coeffs <- read_csv("parameter-data/below-ground-residue-coefficients.csv", na = c("", "NA"), col_types = "cnnn")
+  crop_agr_coeffs <- read_csv("parameter-data/above-ground-residue-coefficients.csv", na = c("", "NA"), col_types = "cnnnnn")
+  
+  # crop and manure fractional content parameters
+  man_params <- read_csv("parameter-data/manure-coefficients.csv", na = c("", "NA"), col_type = "cnnn")
+  crop_params <- read_csv("parameter-data/crop-N-and-lignin-fractions.csv", na = c("", "NA"), col_type = "cnn")
+  
+  # cover crop parameters
+  cc_probs <- read_csv("parameter-data/cover-crop-tillage-proportion.csv", col_types = "cnn")
+  cc_params <- read_csv("parameter-data/cover-crop-parameters.csv", col_types = "ccinnnnnnnncc")
+  
   
   # calculate C in residues
   Dat_nest <- Dat_nest %>%
     mutate(
       data = map2(data, crop_type, function(data, crop_type) {
         data %>%
-          mutate(C_res = C_in_residues(yield_tha,
-                                       crop_type,
-                                       frac_renew,
-                                       frac_remove))
+          mutate(C_res = C_in_residues(yield_tha, crop_type, frac_renew, frac_remove,
+                                       crop_agr_coeffs, crop_bgr_coeffs))
       }))
   
-  # ADD COVER CROP FUNCTION IN HERE (SIMILAR FORMAT TO MAIN CROP ABOVE)
-  Dat_nest <-Dat_nest %>% 
-    mutate(
-      data = map2(data, cover_crop, function(data, cover_crop) {
-        data %>% 
-          mutate(C_res = C_in_residues(yield_tha,
-                                       cover_crop,
-                                       frac_renew,
-                                       frac_remove)) # frac_remove in funcion of the cover crop
-        
-      }))
+  # add cover crop data
+  Dat_nest <- Dat_nest %>%
+    mutate(data = data %>%
+             map(~has_cc(.x, cc_probs)) %>%
+             map(~get_cover_crop_data(.x, cc_params))
+           )
   
   # calculate C in manure
   Dat_nest <- Dat_nest %>%
     mutate(
       data = map2(data, man_type, function(data, man_type) {
         data %>%
-          mutate(C_man = C_in_manure(man_nrate,
-                                     man_type))
+          mutate(C_man = C_in_manure(man_nrate, man_type, man_params))
       }))
   
   # calculate N frac, lignin frac + total C
@@ -321,15 +380,11 @@ build_model <- function(Dat_nest){
     mutate(
       data = pmap(list(data, crop_type, man_type), function(data, crop_type, man_type) {
         data %>%
-          mutate(N_frac = N_frac(crop_type,
-                                 man_type,
-                                 C_res,
-                                 C_man),
-                 lignin_frac = lignin_frac(crop_type,
-                                           man_type,
-                                           C_res,
-                                           C_man),
-                 C_tot = C_res + C_man
+          mutate(N_frac = N_frac(crop_type, man_type, C_res, C_man, cc_dm_tha, cc_lignin_res,
+                                 crop_params, man_params),
+                 lignin_frac = lignin_frac(crop_type, man_type, C_res, C_man, cc_dm_tha, cc_lignin_res,
+                                           crop_params, man_params),
+                 C_tot = C_res + C_man + cc_C_res
           )
       }))
   

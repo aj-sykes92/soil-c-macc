@@ -1,4 +1,4 @@
-Tillage_type,Proportion_cc_min,Proportion_cc_max
-Conventional,0.4,0.54
-Reduced,0.7,0.86
-Zero,0.95,0.95
+till_type,frac_cc_min,frac_cc_max
+full,0.4,0.54
+reduced,0.7,0.86
+zero,0.95,0.95

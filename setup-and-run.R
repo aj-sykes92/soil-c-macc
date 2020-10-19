@@ -12,11 +12,6 @@ source("ipcc-c-model-functions.R")
 set.seed(2605)
 Dat_nest <- Dat_nest %>% sample_n(50)
 
-# add in dummy assumptions
-Dat_nest <- Dat_nest %>%
-  mutate(data =  map(data, ~.x %>% mutate(frac_renew = 1,
-                                          till_type = "zero")))
-
 # build and run model
 Dat_nest <- build_model(Dat_nest)
 
