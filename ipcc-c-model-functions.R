@@ -404,7 +404,7 @@ build_model <- function(Dat_nest) {
 ts_plot <- function(df_bl, df_mod = NULL, baseline_year = 2020){
   
   # baseline soil carbon
-  baseline <- df_bl$scenario_baseline[[1]] %>% filter(year == baseline_year) %>% pull(total_y)
+  #baseline <- df_bl$scenario_baseline[[1]] %>% filter(year == baseline_year) %>% pull(total_y)
   
   # bind up dfs if 2nd is present
   df <- if(is.null(df_mod)){
@@ -416,14 +416,17 @@ ts_plot <- function(df_bl, df_mod = NULL, baseline_year = 2020){
   
   # plot
   df %>%
+    mutate(scenario_baseline = scenario_baseline %>%
+             map(~.x %>% mutate(total_y_rel = total_y / total_y[1]))) %>%
     unnest(cols = c("scenario_baseline")) %>%
     drop_na() %>%
-    ggplot(aes(x = year, y = total_y, colour = scenario)) +
+    ggplot(aes(x = year, y = total_y_rel, colour = scenario)) +
     geom_line(aes(group = interaction(sample, scenario, x, y)), alpha = 0.05) +
     geom_smooth(size = 0.5, method = "loess", se = F, span = 0.3) +
-    geom_hline(yintercept = baseline, size = 0.5, colour = "black", lty = 2) +
+    #geom_hline(yintercept = 1, size = 0.5, colour = "black", lty = 2) +
     labs(x = "Year",
-         y = expression("Soil organic carbon (tonnes ha"^{-1}*")"),
+         #y = expression("Soil organic carbon (tonnes ha"^{-1}*")"),
+         y = "Soil organic carbon (fractional relative to baseline)",
          colour = "",
          title = "") +
     scale_colour_manual(values = c("darkred", "darkgreen")) +
