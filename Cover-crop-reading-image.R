@@ -1,11 +1,12 @@
 library(digitize)
-library(bmp)
+library(tidyverse)
 
 
+cal <- ReadAndCal(project_data(path = "SCS-measures/cc_yield_image.png"))
 
-cc_yield_image <- readbitmap::read.bitmap(project_data(path = "SCS-measures/cover-crop-yield.bmp"))
+data <-DigitData(col = 'red')
 
-str(cc_yield_image)
+data_est <- Calibrate(data, cal, "Control", "Mix 3", 0.00, 3.00)
 
-digitize(project_data(path = "SCS-measures/cover-crop-yield.bmp"))
+  
 
