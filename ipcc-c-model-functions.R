@@ -222,7 +222,7 @@ has_cc <- function(data, cc_probs) {
   # Select frac_remove by cover crop termination method: cutivation/grazing (cg) or using herbecides (hb)
 cc_frac_remove <- function(data, cc_end) {
   data %>%
-    left_join(cc_end, by = "cc_end")
+    left_join(cc_end) %>% 
     mutate(frac_remove = ifelse(runif(n = nrow(data)) >= 0.8, cg_frac_remove, hb_frac_remove),
          cc_frac_remove = runif(n = nrow(data)) <= frac_remove) %>% 
     select(-cg_frac_remove, -hb_frac_remove, -frac_remove)
