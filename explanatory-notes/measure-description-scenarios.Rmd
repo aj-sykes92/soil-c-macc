@@ -1,0 +1,38 @@
+---
+title: "Description of the SOC seq measures"
+author: "Carmen Medina Carmona"
+date: "12/11/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Scenario/measure 1: Increasing reduced tillage uptake
+
+This measure aims to increase the uptake of reduced tillage, while reducing the uptake of conventional tillage by 10%, from 2020-2097, when compared with the baseline scenario. No changes in terms of the uptake of zero tillage, as according to Powlson et al., 2012 in their review study: The potential to increase soil carbon stocks through reduced tillage or organic material additions in England and Wales, zero tillage is difficult to apply in the UK for two main reasons:
+
+  1- Soil type (poorly structure)
+  2- Quantity of crop residue produced, which it is difficult to manage due to the highly productive systems.
+  
+The most up to date data that we have estimates that in the UK arable area in 2016 was ~ 44% under conventional tillage, 27% reduced tillage, 4% zero tillage and 26% was not sown or cultivated during the reference year. (Eurostat 2020).
+
+Therefore, with this scenario 1 or measure 1, how much SOC can be stored if from 2020 and onwards the share of tillage in the UK wheat production system has a similar shared between conventional and reduced tillage?
+
+Modifications to the baseline scenario are:
+
+  1- stochastic tillage type selection
+  Tell the model that from 2020, increase by 10% the cell assigned as reduced tillage (I am not sure if this is the part that needs to be modified for this measure to be applied.
+
+
+## Scenario/m
+  
+  
+
+## References
+
+Eurostat 2020. (https://ec.europa.eu/eurostat/statistics-explained/index.php/Agri-environmental_indicator_-_tillage_practices).
+
+Powlson et al., 2012 : https://www.sciencedirect.com/science/article/abs/pii/S0167880911003380?via%3Dihub
+
