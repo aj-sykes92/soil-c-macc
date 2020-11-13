@@ -23,13 +23,13 @@ Therefore, with this scenario 1 or measure 1, how much SOC can be stored if from
 Modifications to the baseline scenario are:
 
   1- stochastic tillage type selection
-  Tell the model that from 2020, increase by 10% the cell assigned as reduced tillage (I am not sure if this is the part that needs to be modified for this measure to be applied.
+  Tell the model that from 2020, increase by 10% the cell assigned as reduced tillage (I am not sure if this is the part that needs to be modified for this measure to be applied).
   
-  2- annual change in tillage practices
+  2- annual change in tillage practices, in the baseline model the change in share between 2010 and 2016 from convetional to reduced tillage was 1.6% in the UK tillage area (Eurostat 2020). For scenario 1, the rate of change needs to be increased.
   
 
 
-## Scenario/measure 2: 
+## Scenario/measure 2:
   
   
 
