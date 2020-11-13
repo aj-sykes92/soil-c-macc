@@ -48,11 +48,6 @@ ggplot() +
   geom_smooth(data = Dat_cc, aes(x = date, y = uptake_frac)) +
   geom_line(data = Dat_prob, aes(x = date, y = uptake_frac))
 
-# Cover crop function
 
-Cover_crop <- function(cc_species, cc_type){
-  
-  
-}
   
   

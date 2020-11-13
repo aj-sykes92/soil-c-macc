@@ -20,7 +20,7 @@ The most up to date data that we have estimates that in the UK arable area in 20
 
 Therefore, with this scenario 1 or measure 1, how much SOC can be stored if from 2020 and onwards the share of tillage in the UK wheat production system has a similar shared between conventional and reduced tillage?
 
-Modifications to the baseline scenario are:
+Modifications to the baseline scenario:
 
   1- stochastic tillage type selection
   Tell the model that from 2020, increase by 10% the cell assigned as reduced tillage (I am not sure if this is the part that needs to be modified for this measure to be applied).
@@ -28,13 +28,63 @@ Modifications to the baseline scenario are:
   2- annual change in tillage practices, in the baseline model the change in share between 2010 and 2016 from convetional to reduced tillage was 1.6% in the UK tillage area (Eurostat 2020). -- not sure how this parameter can be modified in the model.
 
 
-## Scenario/measure 2:
+## Scenario/measure 2:Biennial conventional tillage
+
+There is evidence that suggests that ploughing in alternate years led to a larger SOC increase than zero tillage, when compared with conventional tillage ocurring every year(Powlson et al., 2012). Therefore, this scenario aims to evaluate the effects on SOC sequestration when conventional tillage is used every two years instead of an annual basis. To apply this change in the baseline scenario, from 2020, the sequence will be conventional tillage-zero tillage-conventional tillage and so on. There is not changes in terms of reduced tillage relative to the baseline scenario.
+
+
+## Scenario/measure 3: Increasing cover crop uptake
+
+This measure aims to increase the uptake of cover crops by 10% from 2020 onwards, relative to the baseline scenario. 
+The assumption for the uptake of cover crops in the baseline scenario was that cover crop management interact strongly with tillage management (Storr et al., 2016). Cover crops are more likely to be adopted in reduced or zero tillage systems as follows:
+
+```{r }
+library(readr)
+cover_crop_tillage_proportion <- read_csv("C:/Users/carme/Documents/SRUC/Working files/soil-c-macc/parameter-data/cover-crop-tillage-proportion.csv")
+View(cover_crop_tillage_proportion)
+```
+
+Therefore, scenario 3 changes the proportion of cover crop uptake in function of tillage type as follows:
+
+  1- If conventional tillage then cover crops adoption of 50 to 60%
+  2- If reduced tillage then cover crops adotion of 80 to 95%
+  3- Zero tillage then cover crops adoption of 100%
   
-  
+``` {r}
+library(readr)
+Scenario_3_cover_crop_tillage_proportion <- read_csv("parameter-data/Scenario 3-cover-crop-tillage-proportion.csv")
+View(Scenario_3_cover_crop_tillage_proportion)
+```
+
+Modifications to the baseline scenario:
+
+Function has_cc (cc_probs)
+
+
+## Scenario/measure 4: Increasing cover crops uptake but reducing diversity containing a legume plant
+
+Measure 4 aims to test the effect on SOC by reducing the number of plant species used as a cover crop mixture. In that sense using the changes in the uptake in Scenario 3 (increasing by 10%) but reducing the number of species to 2, where 1 of them is a legume. The rationale supporting this scenario is that there is evidence that suggest that at higher plant diversity, SOC accumulation is higher (Prommer et al., 2019). However, how the presence or not of key species (e.g. legumes) affects these results is not clear.
+
+Is there a threshold between  increasing SOC and cover crops diversity? because a more diverse cover crop translates to an increase of the cost for the farmers in adquiring the seeds.
+
+
+## Scenario/measure 5: Increasing cover crops uptake but reducing diversity without a legume plant
+
+Measure 5 aims to test the effect on SOC by reducing the number of plant species used as a cover crop mixture. In that sense using the changes in the uptake in Scenario 3 (increasing by 10%) but reducing the number of species to 2 non-legume plants.
+
+
+## Scenario/measure 6: Increasing cover crops uptake and diversity without a legume plant
+
+Similar to scenario 3 but not containing legume plants in the mix of cover crops.
+
+Using measure 4, 5 and 5 in the model may potentially inform and direct funding for more modelling and experimental research in this area.
+
 
 ## References
 
 Eurostat 2020. (https://ec.europa.eu/eurostat/statistics-explained/index.php/Agri-environmental_indicator_-_tillage_practices).
 
 Powlson et al., 2012 : https://www.sciencedirect.com/science/article/abs/pii/S0167880911003380?via%3Dihub
+
+Prommer et al., 2019 : https://onlinelibrary.wiley.com/doi/full/10.1111/gcb.14777
 
