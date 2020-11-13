@@ -24,9 +24,12 @@ Modifications to the baseline scenario are:
 
   1- stochastic tillage type selection
   Tell the model that from 2020, increase by 10% the cell assigned as reduced tillage (I am not sure if this is the part that needs to be modified for this measure to be applied.
+  
+  2- annual change in tillage practices
+  
 
 
-## Scenario/m
+## Scenario/measure 2: 
   
   
 
