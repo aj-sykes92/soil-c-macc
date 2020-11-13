@@ -2,7 +2,9 @@
 title: "Description of the SOC seq measures"
 author: "Carmen Medina Carmona"
 date: "12/11/2020"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -52,7 +54,7 @@ Therefore, scenario 3 changes the proportion of cover crop uptake in function of
   
 ``` {r}
 library(readr)
-Scenario_3_cover_crop_tillage_proportion <- read_csv("parameter-data/Scenario 3-cover-crop-tillage-proportion.csv")
+Scenario_3_cover_crop_tillage_proportion <- read_csv("C:/Users/carme/Documents/SRUC/Working files/soil-c-macc/parameter-data/Scenario 3-cover-crop-tillage-proportion.csv")
 View(Scenario_3_cover_crop_tillage_proportion)
 ```
 
