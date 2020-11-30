@@ -94,3 +94,58 @@ build_tillage_scenario <- function(Dat_nest, type, uptake, change_year = 2015) {
   
   return(Dat_nest)
 }
+
+################################
+# build cover crop scenarios
+################################
+
+build_cc_scenario <- function(Dat_nest, cc_probs_pre, cc_probs_post, legume, combi_min, combi_max, change_year = 2015) {
+  
+  # crop residue method lookups
+  crop_bgr_coeffs <- read_csv("parameter-data/below-ground-residue-coefficients.csv", na = c("", "NA"), col_types = "cnnn")
+  crop_agr_coeffs <- read_csv("parameter-data/above-ground-residue-coefficients.csv", na = c("", "NA"), col_types = "cnnnnn")
+  
+  # crop and manure fractional content parameters
+  man_params <- read_csv("parameter-data/manure-coefficients.csv", na = c("", "NA"), col_type = "cnnn")
+  crop_params <- read_csv("parameter-data/crop-N-and-lignin-fractions.csv", na = c("", "NA"), col_type = "cnn")
+  
+  # cover crop parameters
+  cc_probs_pre <- read_csv(paste0("parameter-data/", cc_probs_pre, ".csv"), col_types = "cnn") # modified to accept altered scenarios
+  cc_probs_post <- read_csv(paste0("parameter-data/", cc_probs_post, ".csv"), col_types = "cnn") # modified to accept altered scenarios
+  cc_params <- read_csv("parameter-data/cover-crop-parameters.csv", col_types = "ccinnnnnnnncc")
+  
+  # build model data
+  # pre and post change year handled separately -- awkward but no other simple solution
+  Dat_old <- Dat_nest %>%
+    mutate(data = data %>% map(~.x %>% filter(year < change_year))) %>%
+    build_residue_C(crop_agr_coeffs, crop_bgr_coeffs) %>%
+    build_cover_crops(cc_probs_pre, cc_params, legume, combi_min, combi_max)
+  
+  Dat_new <- Dat_nest %>%
+    mutate(data = data %>% map(~.x %>% filter(year >= change_year))) %>%
+    build_residue_C(crop_agr_coeffs, crop_bgr_coeffs) %>%
+    build_cover_crops(cc_probs_post, cc_params, legume, combi_min, combi_max)
+  
+  Dat_nest <- Dat_nest %>%
+    mutate(data = map2(Dat_old$data, Dat_new$data, ~arrange(bind_rows(.x, .y), year))) %>%
+    build_manure_C(man_params) %>%
+    build_fractions(crop_params, man_params)
+  
+  # add a 20 year run in period to the model data
+  Dat_nest <- Dat_nest %>%
+    mutate(data_runin = map(data, ~run_in(.x, years = 20)))
+  
+  # run model
+  Dat_nest <- Dat_nest %>%
+    mutate(scenario_baseline = map(data_runin, run_model))
+  
+  return(Dat_nest)
+}
+
+################################
+# extract outputs
+################################
+
+
+
+

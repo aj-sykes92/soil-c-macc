@@ -210,7 +210,7 @@ lignin_frac <- function(crop_type, manure_type, C_res, C_man, cc_dm_tha, cc_lign
 ###################
 # cover crop functions
 
-  # has cover crop in cell/year?
+# has cover crop in cell/year?
 has_cc <- function(data, cc_probs) {
   data %>%
     left_join(cc_probs, by = "till_type") %>%
@@ -219,27 +219,50 @@ has_cc <- function(data, cc_probs) {
     select(-frac_cc_min, -frac_cc_max, -cc_threshold)
 }
 
-    # get cover crop data
-get_cover_crop_data <- function(data, cc_params, cc_bgr_coeffs, combi_min = 2, combi_max = 4) {
+# get cover crop data
+get_cover_crop_data <- function(data, cc_params, cc_bgr_coeffs, legume, combi_min, combi_max) {
   
-  # group size and combination
+  # group size
   combi_n <- sample(combi_min:combi_max, 1)
-  combi_groups <- sample(1:max(cc_params$Group), combi_n, replace = F)
+  
+  # group combination, with or without legumes
+  if (isTRUE(legume)) {
+    types <- c(
+      2,
+      cc_params %>%
+        filter(Type_cc != "legume") %>%
+        distinct(Group) %>%
+        sample_n(combi_n - 1, replace = F) %>%
+        pull()
+    )
+  }
+  if (isFALSE(legume)) {
+    types <- cc_params %>%
+      filter(Type_cc != "legume") %>% 
+      distinct(Group) %>%
+      sample_n(combi_n, replace = F) %>%
+      pull()
+  }
+  if (is.null(legume)) {
+    types <- cc_params %>%
+      distinct(Group) %>%
+      sample_n(combi_n, replace = F) %>%
+      pull()
+  }
   
   combi_mix <- cc_params %>%
-    filter(Group %in% combi_groups) %>%
+    filter(Group %in% types) %>%
     group_by(Group) %>%
     sample_n(1) %>%
     ungroup()
   
   # mix ratios
   ratio <- runif(n = combi_n)
-  ratio = ratio / sum(ratio)
+  ratio <- ratio / sum(ratio)
   
   # Cover crop frac remove by cover crop termination method
   sample <- runif(1)
   cc_end <- ifelse(sample >= 0.8, 0.666, 0.00) # Storr et al 2019. Approx 80% used herbicides from cc termination, while 20% used grazing/cultivation
-  
   
   # output
   combi_mix <- combi_mix %>%
@@ -252,7 +275,7 @@ get_cover_crop_data <- function(data, cc_params, cc_bgr_coeffs, combi_min = 2, c
               cc_DRY = sum(DRY * ratio)) %>%
     mutate(cc_agr_bio = cc_yield_tha * cc_DRY,
            cc_bgr_bio = cc_agr_bio * cc_RS,
-           cc_dm_tha = cc_agr_bio*(1 - cc_end) + cc_bgr_bio,
+           cc_dm_tha = cc_agr_bio* (1 - cc_end) + cc_bgr_bio,
            cc_N_res = cc_dm_tha * cc_N_frac,
            cc_C_res = cc_N_res * cc_CN_ratio,
            cc_lignin_res = cc_dm_tha * cc_lignin_frac) %>%
@@ -357,11 +380,15 @@ build_residue_C <- function(Dat_nest, crop_agr_coeffs, crop_bgr_coeffs) {
 }
 
 # cover crop data
-build_cover_crops <- function(Dat_nest, cc_probs, cc_params) {
+build_cover_crops <- function(Dat_nest, cc_probs, cc_params, legume = NULL, combi_min = 2, combi_max = 4) {
   Dat_nest %>%
     mutate(data = data %>%
              map(~has_cc(.x, cc_probs)) %>%
-             map(~get_cover_crop_data(.x, cc_params))
+             map(~get_cover_crop_data(.x,
+                                      cc_params = cc_params,
+                                      legume = legume, 
+                                      combi_min = combi_min,
+                                      combi_max = combi_max))
     )
 }
 
