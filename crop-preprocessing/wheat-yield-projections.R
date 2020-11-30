@@ -1,5 +1,4 @@
 
-library(dplyr)
 library(tidyverse)
 
 Dat_wheat_ts <- read_csv(project_data(path = "project-data/faostat-uk-wheat-prod-1961-2018.csv")) %>%
@@ -78,6 +77,7 @@ Dat_wheat_full %>%
 
 # raster to check out current wheat yield spread
 # basically sense check linear increase as modelled above
+library(raster)
 Ras_wheatyield <- raster(project_data(path = "GIS-data/MapSpam data/Yield/yield_wheat.tif"))
 
 # masking shapefile
