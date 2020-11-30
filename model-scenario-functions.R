@@ -45,6 +45,7 @@ tillage_mod_fun <- function(data, type, uptake, change_year) {
   
   length <- data %>% filter(year >= change_year) %>% nrow()
   if (type == "reduced") measure <- rep("reduced", length)
+  if (type == "zero") measure <- rep("zero", length)
   if (type == "biennial") measure <- rep(c("full", "zero"), length)[1:length]
   
   if (is_conv & sample <= uptake) {
