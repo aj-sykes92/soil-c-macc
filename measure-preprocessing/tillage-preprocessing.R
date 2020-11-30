@@ -175,12 +175,12 @@ Dat_nest <- Dat_nest %>%
   select(-till_type)
 
 # residues
-# based on information from Carmen M -- residue removal between half and two-thirds
+# based on information from Carmen M -- residue removal between 66.6 and 90% CRM 30/11/2020
 Dat_nest <- Dat_nest %>%
   mutate(data = data %>%
            map(function(data) {
              data %>%
-               mutate(frac_remove = runif(nrow(data), min = 0.5, max = 0.666))
+               mutate(frac_remove = runif(nrow(data), min = 0.666, max = 0.900))
            }))
 
 # fraction of crop renewed -- wheat is annual
