@@ -39,18 +39,18 @@ build_baseline_scenario <- function(Dat_nest) {
 ################################
 
 # modification function
-tillage_mod_fun <- function(data, type, uptake) {
-  is_conv <- data$till_type[data$year == 2020] == "full"
+tillage_mod_fun <- function(data, type, uptake, change_year) {
+  is_conv <- data$till_type[data$year == change_year] == "full"
   sample <- runif(1)
   
-  length <- data %>% filter(year >= 2020) %>% nrow()
+  length <- data %>% filter(year >= change_year) %>% nrow()
   if (type == "reduced") measure <- rep("reduced", length)
-  if (type == "bienniel") measure <- rep(c("full", "zero"), length)[1:length]
+  if (type == "biennial") measure <- rep(c("full", "zero"), length)[1:length]
   
-  if (is_conv & runif <= uptake) {
+  if (is_conv & sample <= uptake) {
     data <- data %>%
       mutate(till_type =
-               ifelse(year >= 2020,
+               ifelse(year >= change_year,
                       measure,
                       till_type)
       )
@@ -58,8 +58,8 @@ tillage_mod_fun <- function(data, type, uptake) {
   return(data)
 }
 
-# tillage 
-build_tillage_scenario <- function(Dat_nest, type = "reduced", uptake = 0.1) {
+# main tillage scenario function
+build_tillage_scenario <- function(Dat_nest, type, uptake, change_year = 2015) {
   
   # crop residue method lookups
   crop_bgr_coeffs <- read_csv("parameter-data/below-ground-residue-coefficients.csv", na = c("", "NA"), col_types = "cnnn")
@@ -75,14 +75,14 @@ build_tillage_scenario <- function(Dat_nest, type = "reduced", uptake = 0.1) {
   
   # modify to measure
   Dat_nest <- Dat_nest %>%
-    mutate(data = map(data, ~tillage_mod_fun(.x, type = type, uptake = uptake)))
+    mutate(data = map(data, ~tillage_mod_fun(.x, type = type, uptake = uptake, change_year = change_year)))
   
   # build model data
   Dat_nest <- Dat_nest %>%
-    build_residue_C() %>%
-    build_cover_crops() %>%
-    build_manure_C() %>%
-    build_fractions()
+    build_residue_C(crop_agr_coeffs, crop_bgr_coeffs) %>%
+    build_cover_crops(cc_probs, cc_params) %>%
+    build_manure_C(man_params) %>%
+    build_fractions(crop_params, man_params)
   
   # add a 20 year run in period to the model data
   Dat_nest <- Dat_nest %>%
