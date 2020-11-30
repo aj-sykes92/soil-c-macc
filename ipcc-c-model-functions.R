@@ -312,7 +312,7 @@ run_model <- function(df){
            # slow pool
            k_s = k_s(tfac = tfac,
                      wfac = wfac,
-                     tillfac = tillfac(till_type)),
+                     tillfac = tillfac(tillage = till_type)),
            slow_y_ss = slow_y_ss(C_input = C_tot,
                                  LC = lignin_frac,
                                  active_y_ss = active_y_ss,
@@ -340,68 +340,56 @@ run_model <- function(df){
 }
 
 ##########################
-# 'build model' -- calculate precursor data and run
-build_model <- function(Dat_nest) {
-  
-  # crop residue method lookups
-  crop_bgr_coeffs <- read_csv("parameter-data/below-ground-residue-coefficients.csv", na = c("", "NA"), col_types = "cnnn")
-  crop_agr_coeffs <- read_csv("parameter-data/above-ground-residue-coefficients.csv", na = c("", "NA"), col_types = "cnnnnn")
-  
-  # crop and manure fractional content parameters
-  man_params <- read_csv("parameter-data/manure-coefficients.csv", na = c("", "NA"), col_type = "cnnn")
-  crop_params <- read_csv("parameter-data/crop-N-and-lignin-fractions.csv", na = c("", "NA"), col_type = "cnn")
-  
-  # cover crop parameters
-  cc_probs <- read_csv("parameter-data/cover-crop-tillage-proportion.csv", col_types = "cnn")
-  cc_params <- read_csv("parameter-data/cover-crop-parameters.csv", col_types = "ccinnnnnnnncc")
-  
-  
-  # calculate C in residues
-  Dat_nest <- Dat_nest %>%
+# model build functions
+##########################
+
+# residue C
+build_residue_C <- function(Dat_nest, crop_agr_coeffs, crop_bgr_coeffs) {
+  Dat_nest %>%
     mutate(
-      data = map2(data, crop_type, function(data, crop_type) {
+      data = map2(.data$data, .data$crop_type, function(data, crop_type) {
         data %>%
-          mutate(C_res = C_in_residues(yield_tha, crop_type, frac_renew, frac_remove,
+          mutate(C_res = C_in_residues(.data$yield_tha, crop_type,
+                                       .data$frac_renew, .data$frac_remove,
                                        crop_agr_coeffs, crop_bgr_coeffs))
-      }))
-  
-  # add cover crop data
-  Dat_nest <- Dat_nest %>%
+      })
+    )
+}
+
+# cover crop data
+build_cover_crops <- function(Dat_nest, cc_probs, cc_params) {
+  Dat_nest %>%
     mutate(data = data %>%
              map(~has_cc(.x, cc_probs)) %>%
              map(~get_cover_crop_data(.x, cc_params))
     )
+}
 
-   # calculate C in manure
-  Dat_nest <- Dat_nest %>%
+# manure C
+build_manure_C <- function(Dat_nest, man_params) {
+  Dat_nest %>%
     mutate(
-      data = map2(data, man_type, function(data, man_type) {
+      data = map2(.data$data, .data$man_type, function(data, man_type) {
         data %>%
-          mutate(C_man = C_in_manure(man_nrate, man_type, man_params))
-      }))
-  
-  # calculate N frac, lignin frac + total C
-  Dat_nest <- Dat_nest %>%
+          mutate(C_man = C_in_manure(.data$man_nrate, man_type, man_params))
+      })
+    )
+}
+
+# N/C/lignin fractions
+build_fractions <- function(Dat_nest, crop_params, man_params) {
+  Dat_nest %>%
     mutate(
-      data = pmap(list(data, crop_type, man_type), function(data, crop_type, man_type) {
+      data = pmap(list(.data$data, .data$crop_type, .data$man_type), function(data, crop_type, man_type) {
         data %>%
-          mutate(N_frac = N_frac(crop_type, man_type, C_res, C_man, cc_dm_tha, cc_lignin_res,
+          mutate(N_frac = N_frac(crop_type, man_type, .data$C_res, .data$C_man, .data$cc_dm_tha, .data$cc_lignin_res,
                                  crop_params, man_params),
-                 lignin_frac = lignin_frac(crop_type, man_type, C_res, C_man, cc_dm_tha, cc_lignin_res,
+                 lignin_frac = lignin_frac(crop_type, man_type, .data$C_res, .data$C_man, .data$cc_dm_tha, .data$cc_lignin_res,
                                            crop_params, man_params),
-                 C_tot = C_res + C_man + cc_C_res
+                 C_tot = .data$C_res + .data$C_man + .data$cc_C_res
           )
-      }))
-  
-  # add a 20 year run in period to the model data
-  Dat_nest <- Dat_nest %>%
-    mutate(data_runin = map(data, ~run_in(.x, years = 20)))
-  
-  # run the model!
-  Dat_nest <- Dat_nest %>%
-    mutate(scenario_baseline = map(data_runin, run_model))
-  
-  return(Dat_nest)
+      })
+    )
 }
 
 ###################
@@ -437,6 +425,3 @@ ts_plot <- function(df_bl, df_mod = NULL, baseline_year = 2020){
     scale_colour_manual(values = c("darkred", "darkgreen")) +
     theme_classic()
 }
-
-detach("package:tidyverse", unload = T)
-
