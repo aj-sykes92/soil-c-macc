@@ -1,37 +1,17 @@
+library(tidyverse)
+library(soilc.ipcc)
+
+# model build functions
+source("model-build-functions.R")
 
 ################################
 # build model baseline scenario
 ################################
 build_baseline_scenario <- function(Dat_nest) {
-  
-  # crop residue method lookups
-  crop_bgr_coeffs <- read_csv("parameter-data/below-ground-residue-coefficients.csv", na = c("", "NA"), col_types = "cnnn")
-  crop_agr_coeffs <- read_csv("parameter-data/above-ground-residue-coefficients.csv", na = c("", "NA"), col_types = "cnnnnn")
-  
-  # crop and manure fractional content parameters
-  man_params <- read_csv("parameter-data/manure-coefficients.csv", na = c("", "NA"), col_type = "cnnn")
-  crop_params <- read_csv("parameter-data/crop-N-and-lignin-fractions.csv", na = c("", "NA"), col_type = "cnn")
-  
-  # cover crop parameters
-  cc_probs <- read_csv("parameter-data/cover-crop-tillage-proportion.csv", col_types = "cnn")
-  cc_params <- read_csv("parameter-data/cover-crop-parameters.csv", col_types = "ccinnnnnnnncc")
-  
-  # build model data
-  Dat_nest <- Dat_nest %>%
-    build_residue_C(crop_agr_coeffs, crop_bgr_coeffs) %>%
-    build_cover_crops(cc_probs, cc_params) %>%
-    build_manure_C(man_params) %>%
-    build_fractions(crop_params, man_params)
-  
-  # add a 20 year run in period to the model data
-  Dat_nest <- Dat_nest %>%
-    mutate(data_runin = map(data, ~run_in(.x, years = 20)))
-  
-  # run model
-  Dat_nest <- Dat_nest %>%
-    mutate(scenario_baseline = map(data_runin, run_model))
-  
-  return(Dat_nest)
+  Dat_nest %>%
+    build_inputs() %>%
+    combine_inputs() %>%
+    build_model()
 }
 
 ################################
@@ -39,106 +19,124 @@ build_baseline_scenario <- function(Dat_nest) {
 ################################
 
 # modification function
-tillage_mod_fun <- function(data, type, uptake, change_year) {
-  is_conv <- data$till_type[data$year == change_year] == "full"
-  sample <- runif(1)
+tillage_mod_fun <- function(data, till_rotation, change_year) {
   
-  length <- data %>% filter(year >= change_year) %>% nrow()
-  if (type == "reduced") measure <- rep("reduced", length)
-  if (type == "zero") measure <- rep("zero", length)
-  if (type == "biennial") measure <- rep(c("full", "zero"), length)[1:length]
+  # length of modified rotation
+  new_vec_length <- data %>% filter(year >= change_year) %>% nrow()
   
-  if (is_conv & sample <= uptake) {
-    data <- data %>%
-      mutate(till_type =
-               ifelse(year >= change_year,
-                      measure,
-                      till_type)
-      )
-  }
+  data %>% filter(year >= change_year) %>% pull(year) %>% min()
+  
+  # parse till rotation into usable vector
+  till_rotation <- as.vector(str_split_fixed(till_rotation, "", str_length(till_rotation)))
+  till_rotation <- case_when(
+    till_rotation == "f" ~ "full",
+    till_rotation == "r" ~ "reduced",
+    till_rotation == "z" ~ "zero",
+    TRUE ~ till_rotation
+  )
+  
+  rep_no <- ceiling(new_vec_length / length(till_rotation))
+  till_rotation <- rep(till_rotation, rep_no)[1:new_vec_length]
+  data$till_type[(1 + nrow(data) - new_vec_length):nrow(data)] <- till_rotation
+    
   return(data)
 }
 
 # main tillage scenario function
-build_tillage_scenario <- function(Dat_nest, type, uptake, change_year = 2015) {
-  
-  # crop residue method lookups
-  crop_bgr_coeffs <- read_csv("parameter-data/below-ground-residue-coefficients.csv", na = c("", "NA"), col_types = "cnnn")
-  crop_agr_coeffs <- read_csv("parameter-data/above-ground-residue-coefficients.csv", na = c("", "NA"), col_types = "cnnnnn")
-  
-  # crop and manure fractional content parameters
-  man_params <- read_csv("parameter-data/manure-coefficients.csv", na = c("", "NA"), col_type = "cnnn")
-  crop_params <- read_csv("parameter-data/crop-N-and-lignin-fractions.csv", na = c("", "NA"), col_type = "cnn")
-  
-  # cover crop parameters
-  cc_probs <- read_csv("parameter-data/cover-crop-tillage-proportion.csv", col_types = "cnn")
-  cc_params <- read_csv("parameter-data/cover-crop-parameters.csv", col_types = "ccinnnnnnnncc")
-  
-  # modify to measure
-  Dat_nest <- Dat_nest %>%
-    mutate(data = map(data, ~tillage_mod_fun(.x, type = type, uptake = uptake, change_year = change_year)))
-  
-  # build model data
-  Dat_nest <- Dat_nest %>%
-    build_residue_C(crop_agr_coeffs, crop_bgr_coeffs) %>%
-    build_cover_crops(cc_probs, cc_params) %>%
-    build_manure_C(man_params) %>%
-    build_fractions(crop_params, man_params)
-  
-  # add a 20 year run in period to the model data
-  Dat_nest <- Dat_nest %>%
-    mutate(data_runin = map(data, ~run_in(.x, years = 20)))
-  
-  # run model
-  Dat_nest <- Dat_nest %>%
-    mutate(scenario_baseline = map(data_runin, run_model))
-  
-  return(Dat_nest)
+build_tillage_scenario <- function(Dat_nest, till_rotation, change_year = 2015) {
+
+  Dat_nest %>%
+    mutate(data = map(
+      data,
+      ~tillage_mod_fun(.x, till_rotation = till_rotation, change_year = change_year))
+      ) %>%
+    build_inputs() %>%
+    combine_inputs() %>%
+    build_model()
+}
+
+################################
+# build residue retention scenarios
+################################
+build_residue_scenario <- function(Dat_nest, frac_remove_new, change_year = 2015) {
+
+  Dat_nest %>%
+    mutate(data = map(
+      data,
+      # modification of frac_remove
+      ~mutate(.x, frac_remove = ifelse(year >= change_year, frac_remove_new, frac_remove)))
+    ) %>%
+    build_inputs() %>%
+    combine_inputs() %>%
+    build_model()
 }
 
 ################################
 # build cover crop scenarios
 ################################
+# cc_type = c("leg2, leg4, nleg2, nleg4")
+build_cc_scenario <- function(Dat_nest, cc_type, change_year = 2015) {
+  
+  # cc_data
+  cc_data <- read_rds("parameter-data/cc-list.rds")[[cc_type]]
+  
+  # change year
+  n_change <- which(Dat_nest$data[[1]]$year == change_year)
+  
+  Dat_nest <- Dat_nest %>%
+    mutate(cc_input = map(cc_input, function(x) {
+      x$om_input[n_change:length(x$om_input)] <- cc_data$om_input
+      x$c_input[n_change:length(x$c_input)] <- cc_data$c_input
+      x$n_input[n_change:length(x$n_input)] <- cc_data$n_input
+      x$lignin_input[n_change:length(x$lignin_input)] <- cc_data$lignin_input
+      return(x)
+    })) %>%
+    build_inputs() %>%
+    combine_inputs() %>%
+    build_model()
+  
+  return(Dat_nest)
+}
 
-build_cc_scenario <- function(Dat_nest, cc_probs_pre, cc_probs_post, legume, combi_min, combi_max, change_year = 2015) {
+################################
+# build clover companion cropping scenario
+################################
+build_clover_scenario <- function(Dat_nest, yield_tha, change_year = 2015) {
+
+  # change year
+  n_change <- which(Dat_nest$data[[1]]$year == change_year)
+  pre <- length(1:(n_change - 1))
+  post <- length(n_change:nrow(Dat_nest$data[[1]]))
   
-  # crop residue method lookups
-  crop_bgr_coeffs <- read_csv("parameter-data/below-ground-residue-coefficients.csv", na = c("", "NA"), col_types = "cnnn")
-  crop_agr_coeffs <- read_csv("parameter-data/above-ground-residue-coefficients.csv", na = c("", "NA"), col_types = "cnnnnn")
-  
-  # crop and manure fractional content parameters
-  man_params <- read_csv("parameter-data/manure-coefficients.csv", na = c("", "NA"), col_type = "cnnn")
-  crop_params <- read_csv("parameter-data/crop-N-and-lignin-fractions.csv", na = c("", "NA"), col_type = "cnn")
-  
-  # cover crop parameters
-  cc_probs_pre <- read_csv(paste0("parameter-data/", cc_probs_pre, ".csv"), col_types = "cnn") # modified to accept altered scenarios
-  cc_probs_post <- read_csv(paste0("parameter-data/", cc_probs_post, ".csv"), col_types = "cnn") # modified to accept altered scenarios
-  cc_params <- read_csv("parameter-data/cover-crop-parameters.csv", col_types = "ccinnnnnnnncc")
-  
-  # build model data
-  # pre and post change year handled separately -- awkward but no other simple solution
-  Dat_old <- Dat_nest %>%
-    mutate(data = data %>% map(~.x %>% filter(year < change_year))) %>%
-    build_residue_C(crop_agr_coeffs, crop_bgr_coeffs) %>%
-    build_cover_crops(cc_probs_pre, cc_params, legume, combi_min, combi_max)
-  
-  Dat_new <- Dat_nest %>%
-    mutate(data = data %>% map(~.x %>% filter(year >= change_year))) %>%
-    build_residue_C(crop_agr_coeffs, crop_bgr_coeffs) %>%
-    build_cover_crops(cc_probs_post, cc_params, legume, combi_min, combi_max)
-  
+  # adding clover as n_fixing_forage
   Dat_nest <- Dat_nest %>%
-    mutate(data = map2(Dat_old$data, Dat_new$data, ~arrange(bind_rows(.x, .y), year))) %>%
-    build_manure_C(man_params) %>%
-    build_fractions(crop_params, man_params)
-  
-  # add a 20 year run in period to the model data
-  Dat_nest <- Dat_nest %>%
-    mutate(data_runin = map(data, ~run_in(.x, years = 20)))
-  
-  # run model
-  Dat_nest <- Dat_nest %>%
-    mutate(scenario_baseline = map(data_runin, run_model))
+    build_inputs() %>%
+    
+    # add in clover input
+    mutate(
+      clover_input = map(1:nrow(Dat_nest),
+                         ~add_crop("n_fixing_forage",
+                                   c(rep(0, pre), rep(yield_tha, post)),
+                                   0,
+                                   1)
+      )
+    ) %>%
+    
+    # custom combine inputs code
+    mutate(
+      soil_input = pmap(
+        list(crop_input, man_input, cc_input, clover_input),
+        function(x, y, z, clover) {
+          if (y$livestock_type == "none") {
+            build_soil_input(x, z, clover)
+          } else {
+            build_soil_input(x, y, z, clover)
+          }
+        })
+    ) %>%
+    # custom code ends
+    
+    build_model()
   
   return(Dat_nest)
 }
@@ -146,7 +144,4 @@ build_cc_scenario <- function(Dat_nest, cc_probs_pre, cc_probs_post, legume, com
 ################################
 # extract outputs
 ################################
-
-
-
 
