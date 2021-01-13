@@ -31,3 +31,37 @@ summary %>%
   theme(legend.position = "bottom") +
   theme_classic()
 ggsave(project_data(path = "project-data/output-plots/trajectory-plot.png"), height = 7, width = 10)
+
+# sequestration rate function
+co2_seq <- function(summary, start_year, dur) {
+  co2_seq <- summary %>%
+    map(
+      ~.x %>%
+        filter(start_year >= 2015,
+               start_year < 2015 + dur)
+    )
+  
+  c_stocks_start <- co2_seq[[1]]$total_y[1]
+  
+  newcol1 <- paste0("c_stocks_", dur, "year")
+  newcol2 <- paste0("annual_co2_seq_tha_", dur, "year")
+  
+  co2_seq <- co2_seq[2:11] %>%
+    map(
+      ~lm(total_y ~ year, data = .x)
+    ) %>%
+    map_dfc(~predict(.x, newdata = tibble(year = start_year + dur))) %>%
+    gather(key = "scenario", value = {{ newcol1 }}) %>%
+    mutate({{ newcol2 }} := (.data[[newcol1]] - c_stocks_start) / dur) %>%
+    select(-{{ newcol1 }})
+  
+  return(co2_seq)
+}
+
+# output csv
+output <- names %>%
+  filter(scenario != "bl") %>%
+  left_join(co2_seq(summary, start_year = 2015, dur = 20), by = "scenario") %>%
+  left_join(co2_seq(summary, start_year = 2015, dur = 50), by = "scenario")
+
+write_csv(output, "model-runs/co2-sequestration-summary.csv")
