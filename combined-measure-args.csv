@@ -1,0 +1,27 @@
+﻿id,measure_x,measure_y,description,till_rotation,frac_remove_new,cc_type,comp_yield_tha
+1,mm01,mm05,Reduced till and crop residue retention,r,0.5,,
+2,mm01,mm06,Reduced till and cover cropping - legume,r,,nleg2,
+3,mm01,mm07,Reduced till and cover cropping + legume,r,,leg2,
+4,mm01,mm08,Reduced till and companion crop + clover,r,,,1.111111111
+5,mm02,mm05,Zero till and crop residue retention,z,0.5,,
+6,mm02,mm06,Zero till and cover cropping - legume,z,,nleg2,
+7,mm02,mm07,Zero till and cover cropping + legume,z,,leg2,
+8,mm02,mm08,Zero till and companion crop + clover,z,,,1.111111111
+9,mm05,mm01,Crop residue retention and reduced till,r,0.5,,
+10,mm05,mm02,Crop residue retention and zero till,z,0.5,,
+11,mm05,mm06,Crop residue retention and cover cropping - legume,,0.5,leg2,
+12,mm05,mm07,Crop residue retention and cover cropping + legume,,0.5,leg2,
+13,mm05,mm08,Crop residue retention and companion crop + clover,,0.5,,1.111111111
+14,mm06,mm01,Cover cropping - legume and reduced till,r,,nleg2,
+15,mm06,mm02,Cover cropping - legume and zero till,z,,nleg2,
+16,mm06,mm05,Cover cropping - legume and crop residue retention,,0.5,nleg2,
+17,mm06,mm08,Cover cropping - legume and companion crop + clover,,,nleg2,1.111111111
+18,mm07,mm01,Cover cropping + legume and reduced till,r,,leg2,
+19,mm07,mm02,Cover cropping + legume and zero till,z,,leg2,
+20,mm07,mm05,Cover cropping + legume and crop residue retention,,0.5,leg2,
+21,mm07,mm08,Cover cropping + legume and companion crop + clover,,,leg2,1.111111111
+22,mm08,mm01,Companion crop + clover and reduced till,r,,,1.111111111
+23,mm08,mm02,Companion crop + clover and zero till,z,,,1.111111111
+24,mm08,mm05,Companion crop + clover and crop residue retention,,0.5,,1.111111111
+25,mm08,mm06,Companion crop + clover and cover cropping - legume,,,nleg2,1.111111111
+26,mm08,mm07,Companion crop + clover and cover cropping + legume,,,leg2,1.111111111
