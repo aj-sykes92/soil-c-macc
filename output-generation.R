@@ -1,24 +1,21 @@
 library(tidyverse)
 
-# read in model summary
-summary <- read_rds("model-runs/model-scenario-summary.rds")
+# read in model summaries
+summary1 <- read_rds("model-runs/model-single-scenario-summary.rds")
+summary2 <- read_rds("model-runs/model-interaction-scenario-summary.rds")
 
-# trajectory plot
-names <- tibble(scenario = c("bl", "m01", "m02", "m03", "m04", "m05", "m06", "m07", "m08", "m09", "m10"),
+# single measure trajectory plot
+names <- tibble(scenario = c("bl00", "mm01", "mm02", "mm05", "mm06", "mm07", "mm08"),
        measure_name = c("Baseline",
                         "Reduced tillage",
                         "Zero tillage",
-                        "Intermittent reduced tillage",
-                        "Intermittent zero tillage",
-                        "Residue retention",
-                        "Cover cropping, legumes, 2 spp.",
-                        "Cover cropping, legumes, 4 spp.",
+                        "Residue retention, 50%",
                         "Cover cropping, no legumes, 2 spp.",
-                        "Cover cropping, no legumes, 4 spp.",
+                        "Cover cropping, legumes, 2 spp.",
                         "Companion cropping with clover")
 )
 
-summary %>%
+summary1 %>%
   bind_rows(.id = "scenario") %>%
   left_join(names, by = "scenario") %>%
   ggplot(aes(x = year, y = total_y, group = measure_name, colour = measure_name)) +
@@ -46,7 +43,7 @@ co2_seq <- function(summary, start_year, dur) {
   newcol1 <- paste0("c_stocks_", dur, "year")
   newcol2 <- paste0("annual_co2_seq_tha_", dur, "year")
   
-  co2_seq <- co2_seq[2:11] %>%
+  co2_seq <- co2_seq[2:length(summary)] %>%
     map(
       ~lm(total_y ~ year, data = .x)
     ) %>%
@@ -58,10 +55,32 @@ co2_seq <- function(summary, start_year, dur) {
   return(co2_seq)
 }
 
-# output csv
-output <- names %>%
-  filter(scenario != "bl") %>%
-  left_join(co2_seq(summary, start_year = 2015, dur = 20), by = "scenario") %>%
-  left_join(co2_seq(summary, start_year = 2015, dur = 50), by = "scenario")
+# output csv for single measures
+output1 <- names %>%
+  filter(scenario != "bl00") %>%
+  left_join(co2_seq(summary1, start_year = 2015, dur = 20), by = "scenario") %>%
+  left_join(co2_seq(summary1, start_year = 2015, dur = 35), by = "scenario") %>%
+  left_join(co2_seq(summary1, start_year = 2015, dur = 82), by = "scenario")
 
-write_csv(output, "model-runs/co2-sequestration-summary.csv")
+write_csv(output1, "model-runs/co2-sequestration-summary-single.csv")
+
+# output csv for single measures and interactions
+output2 <- co2_seq(append(summary1, summary2), start_year = 2015, dur = 20) %>%
+  left_join(co2_seq(append(summary1, summary2), start_year = 2015, dur = 35), by = "scenario") %>%
+  left_join(co2_seq(append(summary1, summary2), start_year = 2015, dur = 82), by = "scenario")
+
+write_csv(output2, "model-runs/co2-sequestration-summary-single-plus-interactions.csv")
+
+# calculate IFs
+interactions <-
+  co2_seq(append(summary1[1], summary2), start_year = 2015, dur = 20) %>%
+  rename(co2_seq_combd = annual_co2_seq_tha_20year) %>%
+  mutate(x = str_sub(scenario, 1, 4),
+         y = str_sub(scenario, -4, -1)) %>%
+  left_join(co2_seq(summary1, 2015, 20) %>% rename(x = scenario, co2_seq_x = annual_co2_seq_tha_20year), by = "x") %>%
+  left_join(co2_seq(summary1, 2015, 20) %>% rename(y = scenario, co2_seq_y = annual_co2_seq_tha_20year), by = "y") %>%
+  mutate(co2_seq_sum = co2_seq_x + co2_seq_y,
+         int_fac = co2_seq_combd / co2_seq_sum) %>%
+  select(-x, -y)
+
+write_csv(interactions, "model-runs/interaction-factor-summary.csv")
