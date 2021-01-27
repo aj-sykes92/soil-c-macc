@@ -5,17 +5,7 @@ library(soilc.ipcc)
 source("model-build-functions.R")
 
 ################################
-# build model baseline scenario
-################################
-build_baseline_scenario <- function(Dat_nest) {
-  Dat_nest %>%
-    build_inputs() %>%
-    combine_inputs() %>%
-    build_model()
-}
-
-################################
-# build tillage scenarios
+# modify tillage practices
 ################################
 
 # modification function
@@ -43,39 +33,35 @@ tillage_mod_fun <- function(data, till_rotation, change_year) {
 }
 
 # main tillage scenario function
-build_tillage_scenario <- function(Dat_nest, till_rotation, change_year = 2015) {
+modify_tillage <- function(Dat_nest, till_rotation, change_year = 2015) {
 
   Dat_nest %>%
     mutate(data = map(
       data,
       ~tillage_mod_fun(.x, till_rotation = till_rotation, change_year = change_year))
-      ) %>%
-    build_inputs() %>%
-    combine_inputs() %>%
-    build_model()
+      )
+  
 }
 
 ################################
-# build residue retention scenarios
+# modify residue management
 ################################
-build_residue_scenario <- function(Dat_nest, frac_remove_new, change_year = 2015) {
+modify_residues <- function(Dat_nest, frac_remove_new, change_year = 2015) {
 
   Dat_nest %>%
     mutate(data = map(
       data,
       # modification of frac_remove
       ~mutate(.x, frac_remove = ifelse(year >= change_year, frac_remove_new, frac_remove)))
-    ) %>%
-    build_inputs() %>%
-    combine_inputs() %>%
-    build_model()
+    )
+  
 }
 
 ################################
-# build cover crop scenarios
+# modify cover crop practices
 ################################
 # cc_type = c("leg2, leg4, nleg2, nleg4")
-build_cc_scenario <- function(Dat_nest, cc_type, change_year = 2015) {
+modify_cc <- function(Dat_nest, cc_type, change_year = 2015) {
   
   # cc_data
   cc_data <- read_rds("parameter-data/cc-list.rds")[[cc_type]]
@@ -90,18 +76,15 @@ build_cc_scenario <- function(Dat_nest, cc_type, change_year = 2015) {
       x$n_input[n_change:length(x$n_input)] <- cc_data$n_input
       x$lignin_input[n_change:length(x$lignin_input)] <- cc_data$lignin_input
       return(x)
-    })) %>%
-    build_inputs() %>%
-    combine_inputs() %>%
-    build_model()
+    }))
   
   return(Dat_nest)
 }
 
 ################################
-# build clover companion cropping scenario
+# modify companion cropping practice (clover)
 ################################
-build_clover_scenario <- function(Dat_nest, yield_tha, change_year = 2015) {
+modify_comp <- function(Dat_nest, comp_yield_tha, change_year = 2015) {
 
   # change year
   n_change <- which(Dat_nest$data[[1]]$year == change_year)
@@ -110,38 +93,79 @@ build_clover_scenario <- function(Dat_nest, yield_tha, change_year = 2015) {
   
   # adding clover as n_fixing_forage
   Dat_nest <- Dat_nest %>%
-    build_inputs() %>%
-    
-    # add in clover input
     mutate(
       clover_input = map(1:nrow(Dat_nest),
                          ~add_crop("n_fixing_forage",
-                                   c(rep(0, pre), rep(yield_tha, post)),
+                                   c(rep(0, pre), rep(comp_yield_tha, post)),
                                    0,
                                    1)
       )
-    ) %>%
-    
-    # custom combine inputs code
-    mutate(
-      soil_input = pmap(
-        list(crop_input, man_input, cc_input, clover_input),
-        function(x, y, z, clover) {
-          if (y$livestock_type == "none") {
-            build_soil_input(x, z, clover)
-          } else {
-            build_soil_input(x, y, z, clover)
-          }
-        })
-    ) %>%
-    # custom code ends
-    
-    build_model()
+    )
   
   return(Dat_nest)
 }
 
 ################################
-# extract outputs
+# combined scenario function
 ################################
+# example args
+# till_rotation = c("zzf", "rrrf", "r", "f", "z") # etc
+# frac_remove_new = 0.3
+# cc_type = c("leg2, leg4, nleg2, nleg4")
+# comp_yield_tha = 1.1
 
+build_scenario <- function(Dat_nest,
+                           till_rotation = NULL,
+                           frac_remove_new = NULL,
+                           cc_type = NULL,
+                           comp_yield_tha = NULL,
+                           change_year = 2015) {
+  
+  # tillage code
+  if (!is.null(till_rotation)) {
+    Dat_nest <- modify_tillage(Dat_nest, till_rotation, change_year)
+  }
+  
+  # residue code
+  if (!is.null(frac_remove_new)) {
+    Dat_nest <- modify_residues(Dat_nest, frac_remove_new, change_year)
+  }
+  
+  # cc code
+  if (!is.null(cc_type)) {
+    Dat_nest <- modify_cc(Dat_nest, cc_type, change_year)
+  }
+  
+  # stage 1 model build
+  Dat_nest <- build_inputs(Dat_nest)
+  
+  # companion code
+  if (!is.null(comp_yield_tha)) {
+    Dat_nest <- modify_comp(Dat_nest, comp_yield_tha, change_year)
+  }
+  
+  # stage 2 model build
+  if (is.null(comp_yield_tha)) {
+    # normal combine inputs
+    Dat_nest <- combine_inputs(Dat_nest)
+  } else {
+    # custom combine inputs if companion present
+    Dat_nest <- Dat_nest %>%
+      mutate(
+        soil_input = pmap(
+          list(crop_input, man_input, cc_input, clover_input),
+          function(x, y, z, clover) {
+            if (y$livestock_type == "none") {
+              build_soil_input(x, z, clover)
+            } else {
+              build_soil_input(x, y, z, clover)
+            }
+          })
+      )
+  }
+  
+  # stage 3
+  Dat_nest <- build_model(Dat_nest)
+
+  return(Dat_nest)
+}
