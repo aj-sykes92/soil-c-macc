@@ -1,131 +1,196 @@
+
+library(raster)
 library(tidyverse)
 
-# read in data
-Dat_nest <- read_rds(project_data(path = "project-data/model-data-input-small-sample-wheat-manure-tillage-data.rds"))
+# NUTS region shapefile
+Shp_nuts <- shapefile(project_data("GIS-data/EGM_2019_SHP_20190312/DATA/Countries/GB/NUTS_3.shp"))
 
-# read cover crop data
-cc_probs <- read_csv("parameter-data/cover-crop-tillage-proportion.csv", col_types = "cnn")
-cc_params <- read_csv("parameter-data/cover-crop-parameters.csv", col_types = "ccinnnnnnnncc")
+# model data
+Dat_nest <- read_rds(project_data("project-data/model-data-input-small-sample-wheat-manure-data.rds"))
 
-# initial wrangle
-cc_params <- cc_params %>%
-  rename(type = Type_cc) %>%
-  group_by(type) %>%
-  summarise(yield_tha = mean(Mean_yield_t_ha),
-            dry = mean(DRY),
-            rs = mean(RS),
-            n_frac = mean(N_frac),
-            lignin_frac = mean(Lignin_frac),
-            cn_ratio = mean(CN_ratio),
-            .groups = "drop") %>%
-  mutate(agr = yield_tha * dry,
-         bgr = agr * rs,
-         om_input = agr + bgr,
-         n_input = om_input * n_frac,
-         lignin_input = om_input * lignin_frac,
-         c_input = n_input * cn_ratio) %>%
-  select(type, om_input, c_input, n_input, lignin_input)
+# tillage data
+till_conv <- readxl::read_xlsx(project_data("SCS-measures/Tillage_practice_statistics_2016_eurostat.xlsx"),
+                               sheet = "Map 1",
+                               range = "B243:F282",
+                               col_names = F) %>%
+  select(nuts_short = `...1`, region = `...2`, frac_conv = `...5`)
 
-# split into assumptions based on yields from CM
-cc_leg_2spp <- cc_params %>%
-  mutate(rel_yield = case_when(
-    type == "cereal" ~ 0.5,
-    type == "legume" ~ 0.5,
-    TRUE ~ 0)
-  ) %>%
-  summarise(om_input = sum(om_input * rel_yield),
-            c_input = sum(c_input * rel_yield),
-            n_input = sum(n_input * rel_yield),
-            lignin_input = sum(lignin_input * rel_yield)
-  ) %>%
+till_cons <- readxl::read_xlsx(project_data("SCS-measures/Tillage_practice_statistics_2016_eurostat.xlsx"),
+                               sheet = "Map 2",
+                               range = "B243:F282",
+                               col_names = F) %>%
+  select(nuts_short = `...1`, region = `...2`, frac_cons = `...5`)
+
+till_zero <- readxl::read_xlsx(project_data("SCS-measures/Tillage_practice_statistics_2016_eurostat.xlsx"),
+                               sheet = "Map 3",
+                               range = "B243:F282",
+                               col_names = F) %>%
+  select(nuts_short = `...1`, region = `...2`, frac_zero = `...5`)
+
+# combine tillage data
+Dat_till <- till_conv %>%
+  left_join(till_cons, by = c("nuts_short", "region")) %>%
+  left_join(till_zero, by = c("nuts_short", "region"))
+
+# reformat
+Dat_till <- Dat_till %>%
+  mutate_at(vars(frac_conv:frac_zero), ~as.numeric(.) / 100)
+
+# fix NAs and assume conventional tillage where unknown (mostly cities -- but we don't want NAs)
+Dat_till <- Dat_till %>%
+  mutate_at(vars(frac_conv:frac_zero), ~replace_na(., 0)) %>%
+  mutate(frac_conv = 1 - frac_cons - frac_zero)
+
+rm(till_conv, till_cons, till_zero)
+
+# add abbreviated short NUTS code to match tillage data
+# checked manually that this matches correctly!
+Shp_nuts$nuts_short <- Shp_nuts$NUTS_CODE %>% str_extract("[:upper:]{3}[:digit:]{1}")
+
+# replace the NUTS codes that some fucker has changed...
+Shp_nuts$nuts_short <- ifelse(Shp_nuts$nuts_short == "UKM7", "UKM2", Shp_nuts$nuts_short)
+Shp_nuts$nuts_short <- ifelse(Shp_nuts$nuts_short == "UKM8", "UKM3", Shp_nuts$nuts_short)
+Shp_nuts$nuts_short <- ifelse(Shp_nuts$nuts_short == "UKM9", "UKM3", Shp_nuts$nuts_short)
+
+# join
+Shp_nuts$frac_conv <- Dat_till$frac_conv[match(Shp_nuts$nuts_short, Dat_till$nuts_short)]
+Shp_nuts$frac_cons <- Dat_till$frac_cons[match(Shp_nuts$nuts_short, Dat_till$nuts_short)]
+Shp_nuts$frac_zero <- Dat_till$frac_zero[match(Shp_nuts$nuts_short, Dat_till$nuts_short)]
+
+# mismatches check
+tibble(Shp_nuts$NUTS_CODE, code = Shp_nuts$nuts_short, Shp_nuts$NUTS_LABEL, frac_conv = Shp_nuts$frac_conv) %>%
+  filter(is.na(frac_conv)) %>% 
+  arrange(code)
+# none
+
+# reproject shapefile to WGS84
+Shp_nuts <- spTransform(Shp_nuts, CRS("+proj=longlat +datum=WGS84"))
+ 
+# conversion of Dat_nest coords to spatial points
+coords <- Dat_nest %>%
+  select(x, y, DA)
+coordinates(coords) <- ~x + y
+proj4string(coords) <- CRS(proj4string(Shp_nuts))
+
+# spatial extraction
+till_extract <- over(coords, Shp_nuts) %>%
+  as_tibble()
+
+# join to Dat_nest
+# verified order is correct
+Dat_nest <- Dat_nest %>%
+  bind_cols(till_extract %>%
+              select(starts_with("frac_"))
+            )
+
+# stochastic tillage type selection
+set.seed(2605)
+Dat_nest <- Dat_nest %>%
+  mutate(selector = runif(nrow(Dat_nest)),
+         till_type = case_when(
+           selector <= frac_conv ~ "full",
+           selector > frac_conv & selector <= frac_conv + frac_cons ~ "reduced",
+           selector > frac_conv + frac_cons & selector <= frac_conv + frac_cons + frac_zero ~ "zero"
+         )) %>%
+  select(-(frac_conv:selector)) %>%
+  mutate(till_type = till_type %>% replace_na("full")) # a few with missing values (not interected by polygons)
+
+# annual change in tillage practices
+frac_change <- readxl::read_xlsx(project_data("SCS-measures/Tillage_practice_statistics_2016_eurostat.xlsx"),
+                                 sheet = "Figure 5",
+                                 range = "C38:E38",
+                                 col_names = F) %>%
+  rename(conv = `...1`, cons = `...2`, zero = `...3`) %>%
+  mutate_all(~. / (6 * 100)) %>% # 6-year reporting period, fraction from percentage
   as.list()
 
-cc_leg_4spp <- cc_params %>%
-  mutate(rel_yield = case_when(
-    type == "cereal" ~ 0.4,
-    type == "legume" ~ 0.2,
-    type == "brassica" ~ 0.2,
-    type == "broadleaf" ~ 0.2,
-    TRUE ~ 0)
-  ) %>%
-  summarise(om_input = sum(om_input * rel_yield),
-            c_input = sum(c_input * rel_yield),
-            n_input = sum(n_input * rel_yield),
-            lignin_input = sum(lignin_input * rel_yield)
-  ) %>%
-  as.list()
+# convert to time series in nested data
 
-cc_nleg_2spp <- cc_params %>%
-  mutate(rel_yield = case_when(
-    type == "cereal" ~ 0.5,
-    type == "brassica" ~ 0.25,
-    type == "broadleaf" ~ 0.25,
-    TRUE ~ 0)
-  ) %>%
-  summarise(om_input = sum(om_input * rel_yield),
-            c_input = sum(c_input * rel_yield),
-            n_input = sum(n_input * rel_yield),
-            lignin_input = sum(lignin_input * rel_yield)
-  ) %>%
-  as.list()
-
-cc_nleg_4spp <- cc_params %>%
-  mutate(rel_yield = case_when(
-    type == "cereal" ~ 0.4,
-    type == "brassica" ~ 0.2,
-    type == "broadleaf" ~ 0.4,
-    TRUE ~ 0)
-  ) %>%
-  summarise(om_input = sum(om_input * rel_yield),
-            c_input = sum(c_input * rel_yield),
-            n_input = sum(n_input * rel_yield),
-            lignin_input = sum(lignin_input * rel_yield)
-  ) %>%
-  as.list()
-
-# condense to list of lists
-cc_list <- list(leg4 = cc_leg_4spp,
-                leg2 = cc_leg_2spp,
-                nleg4 = cc_nleg_4spp,
-                nleg2 = cc_nleg_2spp)
-rm(cc_leg_4spp, cc_leg_2spp, cc_nleg_4spp, cc_nleg_2spp)
-
-# add to Dat_nest
-
-# has cover crop in cell/year?
-has_cc <- function(data, cc_probs) {
+# funs for cells depending on original tillage type
+zero_till <- function(data) {
   data %>%
-    left_join(cc_probs, by = "till_type") %>%
-    mutate(cc_threshold = runif(n = nrow(data), min = frac_cc_min, max = frac_cc_max),
-           has_cc = runif(n = nrow(data)) <= cc_threshold) %>%
-    pull(has_cc)
+    mutate(till_type = "zero")
 }
 
-# stochastic function, lots of sampling
-Dat_nest <- Dat_nest %>%
-  mutate(has_cc = map(data, ~has_cc(.x, cc_probs)))
-
-expand_list <- function(cc_list, has_cc) {
-  map(cc_list, ~.x * has_cc)
+reduced_till <- function(data) {
+  past <- nrow(data %>% filter(origin == "historic"))
+  future <- nrow(data %>% filter(origin == "simulated"))
+  
+  selector <- runif(future)
+  changeyear <- which(selector <= frac_change$zero) %>% min()
+  if (is.infinite(changeyear)) changeyear <- future
+  
+  till_ts <- c(rep("reduced", past),
+                 rep("reduced", changeyear),
+                 rep("zero", future - changeyear))
+  
+  data <- data %>%
+    mutate(till_type = till_ts)
+  
+  return(data)
 }
 
-# add cc if has_cc 
-Dat_nest <- Dat_nest %>%
-  mutate(cc_input = map(has_cc, ~cc_list[[sample(1:4, size = 1)]] %>% expand_list(.x))) %>%
-  select(-has_cc)
+full_till <- function(data) {
+  past <- nrow(data %>% filter(origin == "historic"))
+  future <- nrow(data %>% filter(origin == "simulated"))
+  
+  selector <- runif(future)
+  changeyear <- which(selector <= frac_change$cons) %>% min()
+  if (is.infinite(changeyear)) changeyear <- future
+  
+  till_ts <- c(rep("full", past),
+               rep("full", changeyear),
+               rep("reduced", future - changeyear))
+  
+  data <- data %>%
+    mutate(till_type = till_ts)
+  
+  return(data)
+}
 
-# late-stage troubleshoot --- bound manure stochastic samples
+# construct stochastic time series in Dat_nest
 Dat_nest <- Dat_nest %>%
-  mutate(man_type = man_type %>% str_replace_all("-", "_"),
-         data = map(data, ~.x %>%
-                      mutate(
-                        man_nrate = ifelse(man_nrate < 0, 0, man_nrate),
-                        man_nrate = ifelse(man_nrate >= 500, 500, man_nrate)
-                      )
-         )
-  )
+  mutate(data = map2(data, till_type,
+                     function(data, till_type) {
+                       if (till_type == "full") data <- full_till(data)
+                       if (till_type == "reduced") data <- reduced_till(data)
+                       if (till_type == "zero") data <- zero_till(data)
+                       return(data)
+                     }))
 
-# write out
-write_rds(Dat_nest, project_data(path = "project-data/model-data-input-small-sample-wheat-manure-tillage-cc-data.rds"))
-write_rds(cc_list, "parameter-data/cc-list.rds")
-          
+# can be used to check performance of stochastic ts functions
+#Dat_nest %>%
+#  filter(till_type == "reduced") %>%
+#  mutate(test = map_dbl(data, function(x){
+#    x %>%
+#      filter(till_type == "zero") %>%
+#      pull(till_type) %>%
+#      length()
+#  })) %>%
+#  filter(test > 0) %>%
+#  View()
+
+# remove till_type from outer df
+Dat_nest <- Dat_nest %>%
+  select(-till_type)
+
+# residues
+# based on information from Carmen M -- residue removal between 66.6 and 90% CRM 30/11/2020
+Dat_nest <- Dat_nest %>%
+  mutate(data = data %>%
+           map(function(data) {
+             data %>%
+               mutate(frac_remove = runif(nrow(data), min = 0.666, max = 0.900))
+           }))
+
+# fraction of crop renewed -- wheat is annual
+Dat_nest <- Dat_nest %>%
+  mutate(data = data %>%
+           map(function(data) {
+             data %>%
+               mutate(frac_renew = 1)
+           }))
+
+# save new df
+write_rds(Dat_nest, project_data("project-data/model-data-input-small-sample-wheat-manure-tillage-data.rds"))
+  

@@ -65,8 +65,9 @@ Dat_wheat <- Dat_wheat %>%
 
 # add in wheat projections (stochastic, by sample)
 
-annual_yield_inc <- 0.008 # estimated UK yield increase for wheat from Ray et al. (2013)
-plateau <- 1 + (0.008 * (2050-2020)) # Ray et al. only make predictions to 2050
+#annual_yield_inc <- 0.008 # estimated UK yield increase for wheat from Ray et al. (2013)
+annual_yield_inc <- 0 # added 27/01/2021 to combat excessive stock increase --- IPCC residue equations not suitable for expected changes in grain:residue ratio
+plateau <- 1 + (annual_yield_inc * (2050-2020)) # Ray et al. only make predictions to 2050
 
 yield_curve <- tibble(year = 2019:2097,
                       ry = plateau + ((1.008-plateau) / (1 + 0.08 * (year - (2019-1))))) # empirically calibrated d value here (0.08) - balance early increases similar to reported (0.008) with reasonable curvature given timespan
