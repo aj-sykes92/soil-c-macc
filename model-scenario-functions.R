@@ -14,8 +14,6 @@ tillage_mod_fun <- function(data, till_rotation, change_year) {
   # length of modified rotation
   new_vec_length <- data %>% filter(year >= change_year) %>% nrow()
   
-  data %>% filter(year >= change_year) %>% pull(year) %>% min()
-  
   # parse till rotation into usable vector
   till_rotation <- as.vector(str_split_fixed(till_rotation, "", str_length(till_rotation)))
   till_rotation <- case_when(
@@ -24,10 +22,19 @@ tillage_mod_fun <- function(data, till_rotation, change_year) {
     till_rotation == "z" ~ "zero",
     TRUE ~ till_rotation
   )
+  till_rotation <- rep(till_rotation, length.out = new_vec_length)
   
-  rep_no <- ceiling(new_vec_length / length(till_rotation))
-  till_rotation <- rep(till_rotation, rep_no)[1:new_vec_length]
+  # work out yield effects
+  yield_effect <- case_when(
+    till_rotation == "full" ~ 1,
+    till_rotation == "reduced" ~ 1.07,
+    till_rotation == "zero" ~ 1.06,
+    TRUE ~ 1
+  )
+  
+  # add to data
   data$till_type[(1 + nrow(data) - new_vec_length):nrow(data)] <- till_rotation
+  data$yield_tha[(1 + nrow(data) - new_vec_length):nrow(data)] <- data$yield_tha[(1 + nrow(data) - new_vec_length):nrow(data)] * yield_effect
     
   return(data)
 }
@@ -69,14 +76,27 @@ modify_cc <- function(Dat_nest, cc_type, change_year = 2015) {
   # change year
   n_change <- which(Dat_nest$data[[1]]$year == change_year)
   
+  # yield effects
+  yield_effects <- case_when(
+    cc_type == "leg2" ~ 1.12,
+    cc_type == "leg4" ~ 1.12,
+    cc_type == "nleg2" ~ 1.04,
+    cc_type == "nleg4" ~ 1.04,
+    TRUE ~ 1
+  )
+  yield_effects <- c(rep(1, n_change - 1), rep(yield_effects, nrow(Dat_nest$data[[1]]) - (n_change - 1)))
+    
   Dat_nest <- Dat_nest %>%
-    mutate(cc_input = map(cc_input, function(x) {
-      x$om_input[n_change:length(x$om_input)] <- cc_data$om_input
-      x$c_input[n_change:length(x$c_input)] <- cc_data$c_input
-      x$n_input[n_change:length(x$n_input)] <- cc_data$n_input
-      x$lignin_input[n_change:length(x$lignin_input)] <- cc_data$lignin_input
-      return(x)
-    }))
+    mutate(
+      cc_input = map(cc_input, function(x) {
+        x$om_input[n_change:length(x$om_input)] <- cc_data$om_input
+        x$c_input[n_change:length(x$c_input)] <- cc_data$c_input
+        x$n_input[n_change:length(x$n_input)] <- cc_data$n_input
+        x$lignin_input[n_change:length(x$lignin_input)] <- cc_data$lignin_input
+        return(x)
+      }),
+      data = map(data, ~mutate(.x, yield_tha = yield_tha * yield_effects))
+    )
   
   return(Dat_nest)
 }
