@@ -9,16 +9,23 @@ set.seed(2605)
 Dat_nest <- Dat_nest %>% sample_n(100) 
 
 # read in scenario setup csv
-scenarios <- read_csv("combined-measure-args.csv")
+scenarios <- readxl::read_xlsx(
+  "combined-measure-args.xlsx",
+  sheet = "measure-args-combd",
+  na = c("NA", ""),
+  col_types = c("numeric", "text", "text", "text", "text", "text",
+                "text", "numeric", "text", "numeric")
+) # loadsa warnings but all good
 
 # convert to arg list
 scenarios <- scenarios %>%
-  mutate(scenario_ref = paste(measure_x, measure_y, sep = "_"),
+  mutate(scenario_ref = paste(measure_a, measure_b, measure_c, measure_d, sep = "_"),
          args = pmap(list(till_rotation, frac_remove_new, cc_type, comp_yield_tha), list),
          args = map(args, ~set_names(.x, c("till_rotation", "frac_remove_new", "cc_type", "comp_yield_tha"))),
          args = map(args, ~.x %>% discard(is.na)),
          args = map(args, ~append(list(Dat_nest = Dat_nest), .x)),
          args = set_names(args, scenario_ref))
+# do not View(scenarios) -- Dat_nest is replicated in args list
 
 # source scenario functions
 source("model-scenario-functions.R")
@@ -28,7 +35,7 @@ out <- project_data(path = "project-data/model-scenarios/")
 
 # run scenarios
 scenario_list <- map(scenarios$args, ~do.call(build_scenario, .x))
-write_rds(scenario_list, paste0(out, "interaction-scenarios.rds"))
+write_rds(scenario_list, paste0(out, "combined-measure-scenarios.rds"))
 
 # build summary and write out
 summary <- scenario_list %>% 
@@ -47,5 +54,5 @@ summary <- scenario_list %>%
                 .groups = "drop")
   )
 
-write_rds(summary, paste0(out, "model-interactino-scenario-summary.rds"))
-write_rds(summary, "model-runs/model-interaction-scenario-summary.rds")
+write_rds(summary, paste0(out, "model-scenario-summary.rds"))
+write_rds(summary, "model-runs/model-scenario-summary.rds")
