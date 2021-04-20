@@ -59,12 +59,30 @@ The majority of this analysis is designed to be conducted on a 'normal' laptop o
 
 * `crop-preprocessing` **folder** Folder containing preprocessing scripts for crop data.
 
-* `measure-preprocessing` **folder** Folder containing preprocessing scripts for different measure scenarios.
-
 * `parameter-data` **folder** Folder containing parameter data (in .csv format) used by the IPCC C model functions.
 
-* `parameter-data` **folder** Folder for .Rmd and .md files detailing analysis developemnt.
-
 * `deprecated` **folder** Folder containing old/no-longer-used documentation and scripts.
+
+* `model-runs` **folder** Folder containing summarised model outputs (see section *Outputs*.
+
+## Outputs
+
+This subdirectory holds summarised, human-readable outputs from the model runs. The full output data is too large to version control and is output directly to Cloud (OneDrive) storage; please see *File Management* section.
+
+In this version controlled output subdirectory are two .csv files:
+
+### `c-sequestration-summary.csv`
+
+This contains a full summary of the sequestration by each measure over each project-defined timescale, as well as formal measure definitions and descriptions. Outputs are all in tonnes C, absolute or annual as described by each variable name.
+
+### `interaction-factor-summary.csv`
+
+This contains a summary of the interaction factors between measures calculated using the C model itself. The data provides:
+
+1. The combined scenario ID
+2. The calculated 20-year C stock for the scenario
+3. The C sequestration calculated with all measures implemented simultaneously in the scenario
+4. The equivalent C sequestration resulting from summed separate implementations of each measure
+5. The interaction factor, effectively the ratio of (3) / (4)
 
 ## References
