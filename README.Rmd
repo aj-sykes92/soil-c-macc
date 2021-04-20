@@ -13,11 +13,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Overview
 
+Repository for code used to develop simulations underlying soil C marginal abatement cost curve paper.
+
 The goal of this analysis is to build and implement a version of the @IPCC2019 steady-state model for soil carbon sequestration in global croplands. This model will initially provide the basis for a series of soil-based mitigation cost-effectiveness simulations focusing on arable crop production in the United Kingdom, with the ultimate goal being the creation of a soil carbon marginal abatement crop curve for UK agriculture.
 
 The model is implemented spatially, being run at 5-arc-minute (approx 10km) grid cell resolution, and over a temporal scale of 136 years, from 1961 to 2097, in annual timesteps (note some data preprocessing is, by necessity, conducted month-wise). There is also provision to run the model over multiple stochastic simulations up to *n = 1000*.
 
-Documentation for the IPCC model can be found at <https://www.ipcc-nggip.iges.or.jp/public/2019rf/vol4.html> under Chapter 5 (Cropland).
+Documentation for the IPCC model can be found at <https://www.ipcc-nggip.iges.or.jp/public/2019rf/vol4.html> under Chapter 5 (Cropland), and in the GitHub repository from which the R package for this implementation is installed, <https://github.com/aj-sykes92/soilc.ipcc>.
 
 ## File management
 
@@ -43,9 +45,17 @@ The majority of this analysis is designed to be conducted on a 'normal' laptop o
 
 * **model-data-setup-3.R** Script using the output from *model-data-setup-2.R* as the basis for stochastic manure addition estimate. Manure application rates are estimated based on historical data and dressing percentages from FAOstat and the British Survey of Fertiliser Practice.
 
-* **ipcc-c-model-setup.R** Script where @IPCC2019 steady state C model is set up and run.
+* **model-data-setup-4.R** Script using the output from *model-data-setup-3.R* as the basis for stochastic tillage estimation. Tillage practices are estimated based on Eurostat tillage practice statistics.
 
-* **ipcc-c-model-functions.R** Script where functions comprising @IPCC2019 steady state C model are defined. This is based on the Shiny app implementation found at <https://github.com/aj-sykes92/msc-morocco-soil-c-modelling> so includes all functions required to run model, plus graphing functions etc. used in the app.
+* **model-data-setup-5.R** Script using the output from *model-data-setup-4.R* as the basis for existing cover crop uptake estimation. Cover cropping practices are defined based on combined information held in *parameter-data/cover-crop-parameters.csv*.
+
+* **model-scenario-functions.R** Script where functions are defined to build soil C sequestration scenarios.
+
+* **combined-measure-args.xlsx** Excel file containing human readable definitioned of each C sequestration scenario as defined by Carmen Medina, plus processable translations used directly in the modelling process.
+
+* **01-model-setup-and-run.R** Script where @IPCC2019 steady state C model is set up and run for all scenarios. The model functions themselves are from the R package `soilc.ipcc`, which is installed from [this GitHub repository](https://github.com/aj-sykes92/soilc.ipcc).
+
+* **02-output-generation.R** Script where output data and summaries from *01-model-setup-and-run.R* are created and written.
 
 * `crop-preprocessing` **folder** Folder containing preprocessing scripts for crop data.
 
@@ -55,5 +65,6 @@ The majority of this analysis is designed to be conducted on a 'normal' laptop o
 
 * `parameter-data` **folder** Folder for .Rmd and .md files detailing analysis developemnt.
 
-## References
+* `deprecated` **folder** Folder containing old/no-longer-used documentation and scripts.
 
+## References
